@@ -1,0 +1,15 @@
+extends default
+
+block topnav
+  div.topnav
+    if (user)
+      a(href=`/logout`)
+        | Logout
+      p #{user}
+
+block content
+  div.container
+    div.content-row
+      h2 ERROR
+    div.content-row
+      p #{error}

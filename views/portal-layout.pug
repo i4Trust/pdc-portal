@@ -1,0 +1,13 @@
+extends default
+
+block topnav
+  div.topnav
+    if (user)
+      block user
+
+block content
+  div.container
+    block search
+
+    if (delivery)
+      block delivery

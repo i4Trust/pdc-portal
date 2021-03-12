@@ -1,0 +1,72 @@
+extends portal-layout
+
+block user
+  a(href=`/logout`)
+        | Logout
+  p #{user}
+  
+
+block search
+  div.content-row
+        form(action='/portal', method='POST')
+          p.portal-delivery
+            | 
+            label(for='delivery_id') Packet Delivery ID:
+            input(type='text', name='delivery_id', id='delivery_id', value=delivery_id, size="50")
+            input(type='submit', value='Get Delivery Order')
+        hr
+  
+block delivery  
+  div.content-delivery-row
+        h2.delivery-id
+          | #{delivery.id}
+        table.table
+          tr
+            th Name
+            th Value
+            th Action
+          tr
+            td(colspan='3')
+              hr
+          tr
+            td Issuer
+            td #{delivery.issuer}
+            td 
+          tr
+            td Destinee
+            td #{delivery.destinee}
+            td 
+          tr
+            td Delivery Address
+            td #{delivery.deliveryAddress.streetAddress}, #{delivery.deliveryAddress.postalCode} #{delivery.deliveryAddress.addressLocality}, #{delivery.deliveryAddress.addressCountry}
+            td 
+          tr
+            td PDA
+            td.highlight #{delivery.pda}
+            td 
+               form(action='/portal', method='POST')
+                p.delivery-action
+                  | 
+                  input(type='text', name='delivery_change_val', id='delivery_change_val', value=delivery.pda)
+                  input(type='hidden', name='delivery_change_attr', id='delivery_change_attr', value='pda')
+                  input(type='hidden', name='delivery_id', id='delivery_id', value=delivery_id)
+                  input(type='submit', value='Change')
+          tr
+            td PTA
+            td.highlight #{delivery.pta}
+            td 
+              form(action='/portal', method='POST')
+                p.delivery-action
+                  | 
+                  input(type='text', name='delivery_change_val', id='delivery_change_val', value=delivery.pta)
+                  input(type='hidden', name='delivery_change_attr', id='delivery_change_attr', value='pta')
+                  input(type='hidden', name='delivery_id', id='delivery_id', value=delivery_id)
+                  input(type='submit', value='Change')
+          tr
+            td EDA
+            td #{delivery.eda}
+            td
+          tr
+            td ETA
+            td #{delivery.eta}
+            td
