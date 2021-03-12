@@ -349,6 +349,16 @@ app.post('/portal', async (req, res) => {
     });
 });
 
+// /health
+// Healthcheck endpoint
+app.get('/health', (req, res) => {
+    res.send({
+	uptime: process.uptime(),
+	message: 'OK',
+	timestamp: Date.now()
+    });
+})
+
 // Start server
 //
 const server = app.listen(config.port, () => {
