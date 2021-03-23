@@ -33,5 +33,16 @@ docker run --rm -it -p 7000:7000 -v <PATH_TO_FILE>/pdc-portal.yml:/home/portal/c
 
 ### Kubernetes
 
-tbd
+A Helm chart is provided on [GitHub](https://github.com/i4Trust/helm-charts/tree/main/charts/pdc-portal) 
+and [Artifacthub](https://artifacthub.io/packages/helm/i4trust/pdc-portal).
+
+
+
+## Debug
+
+Enable debugging by setting the environment variable:
+```shell
+DEBUG="portal:*"
+```
+
 

@@ -1,3 +1,4 @@
+var debug = require('debug')('portal:config');
 const fs = require('fs');
 const yaml = require('js-yaml');
 
@@ -72,5 +73,8 @@ config.redirect_uri = config.url + config.redirect_uri_path;
 if (user_cfg.idp) {
     config.idp = user_cfg.idp;
 }
+
+// Debug output of config
+debug('Loaded config: %O', config);
 
 module.exports = config;

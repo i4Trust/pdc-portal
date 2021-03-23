@@ -1,3 +1,4 @@
+var debug = require('debug')('portal:server');
 const config = require('./config.js');
 const moment = require('moment');
 const uuid = require('uuid');
@@ -28,10 +29,11 @@ while ((m = crt_regex.exec(config.crt)) !== null) {
     }
     chain.push(m[1].replace(/\n/g, ""));
 }
+debug('Prepared certificate chain: %o', chain);
 
 // Create JWT
 async function create_jwt(payload) {
-    //console.log('Creating signed JWT for payload: ', JSON.stringify(payload));
+    debug('Creating signed JWT for payload: %j', payload);
     const key = await jose.JWK.asKey(config.key, "pem");
     return await jose.JWS.createSign({
         algorithm: 'RS256',
@@ -45,7 +47,7 @@ async function create_jwt(payload) {
 
 // Send /authorise
 async function authorise(idp) {
-    //console.log('/authorize: ' + JSON.stringify(idp));
+    debug('Perform /authorise for IDP: %j', idp);
     let result = {
 	location: null,
 	err: null
@@ -83,18 +85,22 @@ async function authorise(idp) {
 
     
     try {
+	debug('Sending /authorise request to IDP with URL encoded body: %o', params);
 	const validation_response = await fetch(idp.authorize_endpoint, {
             method: 'POST',
             body: params,
             headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
 	});
 	if (validation_response.status != 204 || !validation_response.headers.has('location')) {
+	    debug('Invalid response on /authorise: %j', validation_response);
 	    result.err = JSON.stringify(validation_response);
 	} else {
+	    debug('Received location header: %o', validation_response.headers.get('location'));
 	    result.location = idp.url + validation_response.headers.get('location');
 	}
 	return result;
     } catch (e) {
+	debug('Error: %o', e);
 	result.err = e;
 	return result;
     }
@@ -103,7 +109,7 @@ async function authorise(idp) {
 
 // Send /token
 async function token(code, jwt, idp) {
-    //console.log('/token');
+    debug('Request /token at IDP');
     let result = {
 	access_token: null,
 	err: null
@@ -117,11 +123,13 @@ async function token(code, jwt, idp) {
     tparams.append('code', code);
 
     try {
+	debug('Sending request to /token endpoint of IDP with URL encoded params: %o', tparams);
 	const token_response = await fetch(idp.token_endpoint, {
             method: 'POST',
             body: tparams
 	});
 	if (token_response.status != 200) {
+	    debug('Request not successful: %j', token_response);
 	    result.err = JSON.stringify(token_response);
 	    return result;
 	}
@@ -132,6 +140,7 @@ async function token(code, jwt, idp) {
 	} else if (!res_body['access_token']) {
 	    result.err = "Missing access_token in response body";
 	} else {
+	    debug('Received access token: %o', res_body['access_token']);
 	    result.access_token = res_body['access_token']; 
 	}
 	return result;
@@ -153,6 +162,7 @@ async function get_delivery(delivery_id) {
     url.searchParams.append('options', 'keyValues');
 
     try {
+	debug('Requesting data for delivery order at GET: %o', url.toString());
 	const get_response = await fetch(url, {
 	    method: 'GET',
 	    headers: { 'Authorization': 'Bearer ' + user_access_token }
@@ -160,6 +170,7 @@ async function get_delivery(delivery_id) {
 	if (get_response.status != 200) {
 	    const errorBody = await get_response.text();
 	    result.err = `Access denied when retrieving delivery order: ${errorBody}`;
+	    debug('Requesting delivery order data failed: %o', errorBody);
 	    return result;
 	}
 	
@@ -167,6 +178,7 @@ async function get_delivery(delivery_id) {
 	if (!res_body) {
 	    result.err = "Missing JSON response body";
 	} else {
+	    debug('Received delivery order data: %j', res_body);
 	    result.delivery = res_body; 
 	}
 	return result;
@@ -191,6 +203,9 @@ async function patch_delivery(id, attr, val) {
     };
 
     try {
+	debug('Perform PATCH request: Change ' + attr + ' to ' + val + ' for ' + id);
+	debug('PATCH request URL: %o', url);
+	debug('PATCH request body: %j', body);
 	const patch_response = await fetch(url, {
 	    method: 'PATCH',
 	    headers: { 'Authorization': 'Bearer ' + user_access_token,
@@ -201,8 +216,10 @@ async function patch_delivery(id, attr, val) {
 	if (patch_response.status != 204) {
 	    const errorBody = await patch_response.text();
 	    result.err = `Access denied when patching delivery order: ${errorBody}`;
+	    debug('Received error when patching delivery order: %o', errorBody);
 	    return result;
 	}
+	debug('PATCH successful');
 	result.status = patch_response.status;
 	return result;
     } catch (e) {
@@ -238,6 +255,7 @@ async function evaluate_user() {
 // Main page
 //
 app.get('/', (req, res) => {
+    debug('GET /: Call to main page');
     res.render('index', {
 	title: config.title
     });
@@ -246,6 +264,7 @@ app.get('/', (req, res) => {
 // /login
 // Perform login by authorising and redirecting to login page of IDP
 app.get('/login', async (req, res) => {
+    debug('GET /login: Login requested');
     const idp = req.query.idp;
     const idp_config = config.idp[idp]
     user_idp = idp_config;
@@ -253,6 +272,7 @@ app.get('/login', async (req, res) => {
     if (result.err) {
 	render_error(res, null, '/authorise: ' + result.err)
     } else if (result.location) {
+	debug('Perform redirect to: %o', result.location);
 	res.redirect(result.location)
     } else {
 	render_error(res, user, 'Failed authorisation')
@@ -262,6 +282,7 @@ app.get('/login', async (req, res) => {
 // /redirect
 // Redirect endpoint for code flow
 app.get(config.redirect_uri_path, async (req, res) => {
+    debug('Receiving call to callback endpoint: %o', config.redirect_uri_path);
     if (!req.query || !req.query.code) {
 	render_error(res, user, 'Did not receive authorisation code!')
     } else {
@@ -272,6 +293,7 @@ app.get(config.redirect_uri_path, async (req, res) => {
 	    return;
 	} else if (result.access_token) {
 	    user_access_token = result.access_token;
+	    debug('Login succeeded, redirecting to /portal');
 	    res.redirect('/portal');
 	} else {
 	    render_error(res, null, 'Failed retrieving token')
@@ -291,9 +313,10 @@ app.get('/logout', (req, res) => {
 // GET /portal
 // Display portal start page after login
 app.get('/portal', async (req, res) => {
-
+    debug('GET /portal: Call to portal page');
     var user = await evaluate_user();
     if (!user) {
+	debug('User was not logged in');
 	render_error(res, null, 'Not logged in');
 	return;
     }
@@ -308,9 +331,10 @@ app.get('/portal', async (req, res) => {
 // POST /portal
 // View/change  delivery order
 app.post('/portal', async (req, res) => {
-    
+    debug('POST /portal: Updating portal page');
     var user = await evaluate_user();
     if (!user) {
+	debug('User was not logged in');
 	render_error(res, null, 'Not logged in');
 	return;
     }
@@ -321,7 +345,6 @@ app.post('/portal', async (req, res) => {
     if (req.body.delivery_change_attr) {
 	const change_attr = req.body.delivery_change_attr;
 	const change_val = req.body.delivery_change_val;
-	console.log('Change ' + change_attr + ' to ' + change_val + ' for ' + delivery_id);
 	const patch_result = await patch_delivery(delivery_id, change_attr, change_val);
 	if (patch_result.err) {
 	    render_error(res, user, 'Failure patching delivery order: ' + patch_result.err)
@@ -335,12 +358,13 @@ app.post('/portal', async (req, res) => {
 	render_error(res, user, 'Failure retrieving delivery order: ' + result.err)
 	return;
     }
-    console.log('Retrieved delivery order: ' + JSON.stringify(result.delivery));
+    
     var delivery = null;
     if (result.delivery) {
 	delivery = result.delivery;
     }
-    
+
+    debug('Render portal page for delivery order: %o', delivery_id);
     res.render('portal', {
 	title: config.title,
 	user: user,
