@@ -6,11 +6,14 @@ const fetch = require('node-fetch');
 const jose = require('node-jose');
 var jwt = require('jsonwebtoken').decode;
 var bodyParser = require('body-parser');
+const path = require('path');
+const favicon = require('serve-favicon');
 const express = require('express');
 const app = express();
 
 app.set('view engine', 'pug');
 app.use(express.static(__dirname + '/public'));
+app.use(favicon(path.join(__dirname, 'public/images', 'favicon.ico')));
 app.use(bodyParser.urlencoded({ extended: true }));
 
 // Global variables
