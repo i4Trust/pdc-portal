@@ -7,6 +7,12 @@ Packet Delivery Portal application for i4Trust experimentation framework
 Configuration is done in the file `config/pdc-portal.yml`. You need to modify the values according to your 
 environment and add your private key and certificate chain.
 
+Private key and certificate chain can be also provided as ENVs as given below. In this case, the values from 
+`config/pdc-portal.yml` would be overwritten.
+* Private key: `PORTAL_CLIENT_KEY`
+* Certificate chain: `PORTAL_CLIENT_CRT`
+
+
 ## Usage
 
 ### Local

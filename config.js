@@ -37,8 +37,18 @@ if (user_cfg.client) {
     if (user_cfg.client.id) {
 	config.id = user_cfg.client.id;
     }
+
+    // Private key
     config.key = user_cfg.client.key;
+    if (!!process.env.PORTAL_CLIENT_KEY) {
+	config.key = process.env.PORTAL_CLIENT_KEY;
+    }
+    
+    // Certificate chain
     config.crt = user_cfg.client.crt;
+    if (!!process.env.PORTAL_CLIENT_CRT) {
+	config.crt = process.env.PORTAL_CLIENT_CRT;
+    }
 }
 
 // External access
