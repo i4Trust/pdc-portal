@@ -1,0 +1,88 @@
+name: Pre-Release
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
+
+env:
+  IMAGE_NAME: i4trust/pdc-portal
+
+jobs:
+
+  generate-version:
+    name: Generate version
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.out.outputs.version }}
+      plain-version: ${{ steps.out.outputs.plain-version }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: bump
+        uses: zwaldowski/match-label-action@v1
+        with:
+          allowed: major,minor,patch
+
+      - uses: zwaldowski/semver-release-action@v2
+        with:
+          dry_run: true
+          bump: ${{ steps.bump.outputs.match }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Get PR Number
+        id: pr_number
+        run: echo "::set-output name=nr::$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')"
+
+      - name: Set version output
+        id: out
+        run: |
+          echo "::set-output name=version::$(echo ${VERSION}-PRE-${{ steps.pr_number.outputs.nr }})"
+          echo "::set-output name=plain-version::$(echo ${VERSION})"
+
+
+  git-release:
+    name: Git release
+    needs: ["generate-version"]
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v2
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: ${{ needs.generate-version.outputs.version }}
+          prerelease: true
+          title: ${{ needs.generate-version.outputs.version }}
+
+
+  docker-release:
+    name: Docker build and release
+    needs: ["git-release", "generate-version"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v1
+
+      - name: Log into registry
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push
+        run: |
+          docker build --tag ${{ env.IMAGE_NAME }}:${{ needs.generate-version.outputs.version }} .
+  
+          docker push ${{ env.IMAGE_NAME }}:${{ needs.generate-version.outputs.version }}
