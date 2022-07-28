@@ -5,6 +5,9 @@ on:
     branches:
       - main
 
+env:
+  IMAGE_NAME: i4trust/pdc-portal
+      
 jobs:
 
   generate-version:
