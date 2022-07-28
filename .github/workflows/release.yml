@@ -36,7 +36,7 @@ jobs:
 
   git-release:
     name: Git release
-    needs: ["generate-version", "build-pep-plugin"]
+    needs: ["generate-version"]
     runs-on: ubuntu-latest
 
     steps:
