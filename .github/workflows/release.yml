@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+
+  generate-version:
+    name: Generate version
+    runs-on: ubuntu-latest
+
+    outputs:
+      version: ${{ steps.out.outputs.version }}
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - id: pr
+        uses: actions-ecosystem/action-get-merged-pull-request@v1.0.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: zwaldowski/semver-release-action@v2
+        with:
+          dry_run: true
+          bump: ${{ steps.pr.outputs.labels }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set version output
+        id: out
+        run: echo "::set-output name=version::$(echo ${VERSION})"
+
+
+
+  git-release:
+    name: Git release
+    needs: ["generate-version", "build-pep-plugin"]
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - uses: actions/checkout@v2
+
+      - uses: actions/download-artifact@v2
+        with:
+          name: pep-plugin
+          path: ./go-plugins/
+
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: ${{ needs.generate-version.outputs.version }}
+          title: ${{ needs.generate-version.outputs.version }}
+          prerelease: false
+          files: |
+            LICENSE
+
+
+  docker-release:
+    name: Docker build and release
+    needs: ["git-release", "generate-version"]
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Log into registry
+        run: echo "${{ secrets.DOCKERHUB_TOKEN }}" | docker login -u "${{ secrets.DOCKERHUB_USERNAME }}" --password-stdin
+        
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and push
+        run: |
+          docker build --tag ${{ env.IMAGE_NAME }}:${{ needs.generate-version.outputs.version }} .
+  
+          docker push ${{ env.IMAGE_NAME }}:${{ needs.generate-version.outputs.version }}
+      
