@@ -260,7 +260,8 @@ async function evaluate_user() {
 app.get('/', (req, res) => {
     debug('GET /: Call to main page');
     res.render('index', {
-	title: config.title
+	title: config.title,
+	idps: config.idp
     });
 });
 
@@ -269,7 +270,7 @@ app.get('/', (req, res) => {
 app.get('/login', async (req, res) => {
     debug('GET /login: Login requested');
     const idp = req.query.idp;
-    const idp_config = config.idp[idp]
+    const idp_config = config.idp.find(item => {return item.id == idp});
     user_idp = idp_config;
     const result = await authorise(idp_config);
     if (result.err) {

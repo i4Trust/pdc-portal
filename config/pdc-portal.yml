@@ -36,12 +36,12 @@ express:
 
 # IDP configuration for login
 idp:
-  "EU.EORI.NLHAPPYPETS":
+  - name: "Happy Pets Inc."
     id: "EU.EORI.NLHAPPYPETS"
     url: "https://idp.happypets.com"
     authorize_endpoint: "https://idp.happypets.com/authorize"
     token_endpoint: "https://idp.happypets.com/token"
-  "EU.EORI.NLNOCHEAPER":
+  - name: "No Cheaper Inc."
     id: "EU.EORI.NLNOCHEAPER"
     url: "https://idp.nocheaper.com"
     authorize_endpoint: "https://idp.nocheaper.com/authorize"
