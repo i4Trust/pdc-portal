@@ -2,10 +2,10 @@ extends default
 
 block content
   div.container-login
-    div.idp
-      a.button(href=`/login?idp=EU.EORI.NLHAPPYPETS`)
-        | Login (HappyPets)
-    div.idp
-      a.button(href=`/login?idp=EU.EORI.NLNOCHEAPER`)
-        | Login (NoCheaper)
+    h1 Login
+    table(class='table-login' border='1' frame='void' rules='rows')
+      each i in idps
+        tr
+          td
+            a.button(href=`/login?idp=` + i.id) #{i.name}
 
