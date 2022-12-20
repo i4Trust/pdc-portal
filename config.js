@@ -84,6 +84,17 @@ if (user_cfg.idp) {
     config.idp = user_cfg.idp;
 }
 
+// SIOP
+config.siop = {
+    enabled: false,
+    redirect_uri: user_cfg.siop.redirect_uri,
+    did: user_cfg.siop.did,
+    scope: user_cfg.siop.scope
+}
+if (user_cfg.siop && user_cfg.siop.enabled) {
+    config.siop.enabled = true
+}
+
 // Debug output of config
 debug('Loaded config: %O', config);
 

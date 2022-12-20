@@ -6,6 +6,7 @@ const fetch = require('node-fetch');
 const jose = require('node-jose');
 var jwt = require('jsonwebtoken').decode;
 var bodyParser = require('body-parser');
+const crypto = require('crypto');
 const path = require('path');
 const favicon = require('serve-favicon');
 const express = require('express');
@@ -20,6 +21,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 global.portal_jwt = null;
 global.user_idp = null;
 global.user_access_token = null;
+global.siop_nonce = null;
 
 // Prepare CRT
 const crt_regex = /^-----BEGIN CERTIFICATE-----\n([\s\S]+?)\n-----END CERTIFICATE-----$/gm;
@@ -251,6 +253,35 @@ async function evaluate_user() {
     return user;
 }
 
+// Get SIOP flow QR code for login via mobile
+function get_siop_qr() {
+    // Create nonce
+    let nonce = crypto.randomBytes(16).toString('base64');
+    siop_nonce = nonce; // Just store as global var now, should be put into some storage
+
+    // Get redirect URI and DID
+    const redirect_uri = config.siop.redirect_uri;
+    const did = config.siop.did;
+
+    // Further parameters
+    const scope = config.siop.scope;
+    const response_type = "vp_token";
+    const response_mode = "post";
+
+    // Build auth request
+    let auth_request = "openid://?";
+    auth_request += "scope="+scope;
+    auth_request += "&response_type="+response_type;
+    auth_request += "&response_mode="+response_mode;
+    auth_request += "&client_id="+did;
+    auth_request += "&redirect_uri="+redirect_uri;
+    auth_request += "&state="+nonce;
+    auth_request += "&nonce="+crypto.randomBytes(16).toString('base64');
+
+    return auth_request;
+}
+
+
 /*
   Routes
 */
@@ -261,7 +292,8 @@ app.get('/', (req, res) => {
     debug('GET /: Call to main page');
     res.render('index', {
 	title: config.title,
-	idps: config.idp
+	idps: config.idp,
+	siop: config.siop.enabled
     });
 });
 
@@ -281,6 +313,15 @@ app.get('/login', async (req, res) => {
     } else {
 	render_error(res, user, 'Failed authorisation')
     }
+});
+
+// /loginSiop
+// Perform login via VC SIOP flow
+app.get('/loginSiop', async (req, res) => {
+    debug('GET /loginSiop: Login via VC requested');
+    const siop_qr = get_siop_qr();
+
+    render_error(res, null, siop_qr);
 });
 
 // /redirect

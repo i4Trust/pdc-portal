@@ -26,13 +26,24 @@ oidc:
 
 # Context Broker configuration
 cb:
-  # Endpoint of (API-Umbrella protected) NGSI-LD API
+  # Endpoint of (PEP/PDP protected) NGSI-LD API
   endpoint: "https://localhost/ngsi-ld/v1"
 
 # Configuration of express web server
 express:
   # Port (Internal port of the express web server)
   port: 7000
+
+# Configuration for SIOP flow
+siop:
+  # SIOP flow enabled
+  enabled: false
+  # Redirect URI that the wallet will use to send the VC/VP
+  redirect_uri: https://packetdelivery.com/verifier/api/v1/authenticationresponse
+  # DID of verifier
+  did: "did:key:z6Mk....JNT"
+  # Type of credential that the Verifier will accept
+  scope: "dsba.credentials.presentation.PacketDeliveryService"
 
 # IDP configuration for login
 idp:
