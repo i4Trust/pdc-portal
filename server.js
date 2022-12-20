@@ -10,6 +10,8 @@ const crypto = require('crypto');
 const path = require('path');
 const favicon = require('serve-favicon');
 const express = require('express');
+const { info } = require('console');
+const qr = require('qrcode')
 const app = express();
 
 app.set('view engine', 'pug');
@@ -315,13 +317,33 @@ app.get('/login', async (req, res) => {
     }
 });
 
+app.get('/login/qr', async (req, res) => { 
+	const siop_qr = get_siop_qr();
+	
+	qr.toString(siop_qr, (err, src) => {
+		res.setHeader('Content-type', 'image/png');
+		console.log(src)
+	})
+})
+
 // /loginSiop
 // Perform login via VC SIOP flow
 app.get('/loginSiop', async (req, res) => {
     debug('GET /loginSiop: Login via VC requested');
-    const siop_qr = get_siop_qr();
+	const qrcode = get_siop_qr()
+	qr.toDataURL(qrcode, (err, src) => {
+		res.render("siop",  {
+			title: config.title,
+			qr: src,
+			verifierHost: config.siop.verifier_uri
+			});
+	})
 
-    render_error(res, null, siop_qr);
+});
+
+app.get('/poll/:state' async (req, res) => {
+    debug('Poll VC');
+	
 });
 
 // /redirect

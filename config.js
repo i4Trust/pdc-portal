@@ -88,6 +88,7 @@ if (user_cfg.idp) {
 config.siop = {
     enabled: false,
     redirect_uri: user_cfg.siop.redirect_uri,
+    verifier_uri: user_cfg.siop.verifier_uri,
     did: user_cfg.siop.did,
     scope: user_cfg.siop.scope
 }

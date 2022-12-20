@@ -1,0 +1,37 @@
+extends default
+
+block content
+  div.container-siop
+    div.content-row
+      h2 Scan QR with your mobile
+    div.content-row
+      img(src="" + qr)
+  script. 
+    const intervalID = setInterval(pollServer, 1000, 'nonce');
+
+    async function pollServer(a) {
+        try {
+            const response = await fetch('/poll/1')
+            if (!response.ok) {
+                window.alert("A server error happened.")
+                location = "/verifier"
+                return
+            }
+            const data = await response.text()
+            if (data === "expired") {
+                location = "/loginexpired"
+                return
+            }
+            if (data === "pending") {
+                return
+            }
+
+            console.log("Received:", data)
+            location = "/receivecredential/{{.state}}"
+            return
+        } catch (error) {
+            window.alert("A server error happened.")
+            location = "/verifier"
+            return
+        }
+    }
