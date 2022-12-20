@@ -11,13 +11,27 @@ const path = require('path');
 const favicon = require('serve-favicon');
 const express = require('express');
 const { info } = require('console');
+const request = require('request');
 const qr = require('qrcode')
+const session = require('express-session')
 const app = express();
+
 
 app.set('view engine', 'pug');
 app.use(express.static(__dirname + '/public'));
 app.use(favicon(path.join(__dirname, 'public/images', 'favicon.ico')));
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(session({
+	genid: function(req) {
+	  return crypto.randomBytes(16).toString('hex')
+	},
+	secret: crypto.randomBytes(16).toString('hex'),
+	// 5 min
+	cookie: {
+		maxAge: 5 * 60 * 1000
+	  }
+
+}))
 
 // Global variables
 global.portal_jwt = null;
@@ -256,10 +270,8 @@ async function evaluate_user() {
 }
 
 // Get SIOP flow QR code for login via mobile
-function get_siop_qr() {
-    // Create nonce
-    let nonce = crypto.randomBytes(16).toString('base64');
-    siop_nonce = nonce; // Just store as global var now, should be put into some storage
+function get_siop_qr(res) {
+    let state = res.sessionID
 
     // Get redirect URI and DID
     const redirect_uri = config.siop.redirect_uri;
@@ -277,8 +289,10 @@ function get_siop_qr() {
     auth_request += "&response_mode="+response_mode;
     auth_request += "&client_id="+did;
     auth_request += "&redirect_uri="+redirect_uri;
-    auth_request += "&state="+nonce;
+    auth_request += "&state="+state;
     auth_request += "&nonce="+crypto.randomBytes(16).toString('base64');
+
+	console.log(auth_request)
 
     return auth_request;
 }
@@ -317,20 +331,12 @@ app.get('/login', async (req, res) => {
     }
 });
 
-app.get('/login/qr', async (req, res) => { 
-	const siop_qr = get_siop_qr();
-	
-	qr.toString(siop_qr, (err, src) => {
-		res.setHeader('Content-type', 'image/png');
-		console.log(src)
-	})
-})
-
-// /loginSiop
 // Perform login via VC SIOP flow
 app.get('/loginSiop', async (req, res) => {
+
+
     debug('GET /loginSiop: Login via VC requested');
-	const qrcode = get_siop_qr()
+	const qrcode = get_siop_qr(res)
 	qr.toDataURL(qrcode, (err, src) => {
 		res.render("siop",  {
 			title: config.title,
@@ -341,9 +347,26 @@ app.get('/loginSiop', async (req, res) => {
 
 });
 
-app.get('/poll/:state' async (req, res) => {
-    debug('Poll VC');
-	
+app.get('/poll', async (req, res) => {
+
+	info('Poll VC from ' + config.siop.verifier_uri );
+	request(config.siop.verifier_uri + "/verifier/api/v1/poll/" + req.sessionID, function (error, response, body) {
+		if (!error && response.statusCode == 200) {
+			console.log("Success")
+			if (body === "expired") {
+				req.session.destroy()
+			} 
+		  	console.log(body.JSON)
+		} else  {
+			console.log("error")
+			console.log(error)
+		}
+	  })
+
+	if(Date.now() > req.session.cookie.expires) {
+		res.send({data: "expired"})
+	}
+	res.send({data: "pending"})
 });
 
 // /redirect

@@ -11,10 +11,8 @@ block content
 
     async function pollServer(a) {
         try {
-            const response = await fetch('/poll/1')
+            const response = await fetch('/poll')
             if (!response.ok) {
-                window.alert("A server error happened.")
-                location = "/verifier"
                 return
             }
             const data = await response.text()
@@ -27,11 +25,9 @@ block content
             }
 
             console.log("Received:", data)
-            location = "/receivecredential/{{.state}}"
+            //location = "/receivecredential"
             return
         } catch (error) {
-            window.alert("A server error happened.")
-            location = "/verifier"
             return
         }
     }

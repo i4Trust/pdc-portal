@@ -41,7 +41,7 @@ siop:
   # Redirect URI that the wallet will use to send the VC/VP
   redirect_uri: https://i4trust-demo-pdc-backend-vcbackend-i4trust-demo.apps.fiware.fiware.dev/verifier/api/v1/authenticationresponse
   # Base uri of the verifier
-  verfier_uri: https://i4trust-demo-pdc-backend-vcbackend-i4trust-demo.apps.fiware.fiware.dev
+  verifier_uri: https://i4trust-demo-pdc-backend-vcbackend-i4trust-demo.apps.fiware.fiware.dev
   # DID of verifier
   did: "did:key:z6MkufEFkFSCXg1DHUsZbYuWcGf4QHat34YSoVgs67ED9m4S"
   # Type of credential that the Verifier will accept
