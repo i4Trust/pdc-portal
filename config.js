@@ -70,6 +70,9 @@ if (user_cfg.oidc) {
 if (user_cfg.cb && user_cfg.cb.endpoint) {
     config.cb_endpoint = user_cfg.cb.endpoint;
 }
+if (user_cfg.cb && user_cfg.cb.endpoint_siop) {
+    config.cb_endpoint_siop = user_cfg.cb.endpoint_siop;
+}
 
 // Web server
 if (user_cfg.express && user_cfg.express.port) {

@@ -176,14 +176,12 @@ async function get_delivery(delivery_id, req_session) {
 	err: null,
 	delivery: null
     }
-    var path = config.cb_endpoint + '/entities/' + delivery_id;
+    var path = req_session.cb_endpoint + '/entities/' + delivery_id;
     var url = new URL(path);
     url.searchParams.append('options', 'keyValues');
 
     try {
 	debug('Requesting data for delivery order at GET: %o', url.toString());
-	debug('With access token:');
-	debug(jwt(req_session.access_token));
 	const get_response = await fetch(url, {
 	    method: 'GET',
 	    headers: { 'Authorization': 'Bearer ' + req_session.access_token }
@@ -216,7 +214,7 @@ async function patch_delivery(id, attr, val, req_session) {
 	err: null,
 	status: null
     }
-    var path = config.cb_endpoint + '/entities/' + id + '/attrs/' + attr;
+    var path = req_session.cb_endpoint + '/entities/' + id + '/attrs/' + attr;
     var url = new URL(path);
     const body = {
 	type: "Property",
@@ -358,7 +356,11 @@ app.get('/poll', async (req, res) => {
 			    req.session.destroy()
 			}
 		        debug(response);
-		  	console.log(body.JSON)
+		        console.log(body.JSON)
+		        // TODO:
+		        // After retrieval of access token, store it in session with the correct CB host
+		        // req.session.access_token = result.access_token;
+		        // req.session.cb_endpoint = config.cb_endpoint_siop;
 		} else  {
 			console.log("error")
 			console.log(error)
@@ -385,6 +387,7 @@ app.get(config.redirect_uri_path, async (req, res) => {
 	    return;
 	} else if (result.access_token) {
 	    req.session.access_token = result.access_token;
+	    req.session.cb_endpoint = config.cb_endpoint;
 	    debug('Login succeeded, redirecting to /portal');
 	    res.redirect('/portal');
 	} else {
