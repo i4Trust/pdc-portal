@@ -296,8 +296,6 @@ function get_siop_qr(req) {
     auth_request += "&state="+state;
     auth_request += "&nonce="+crypto.randomBytes(16).toString('base64');
 
-	console.log(auth_request)
-
     return auth_request;
 }
 
