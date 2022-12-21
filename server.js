@@ -268,8 +268,8 @@ async function evaluate_user(req_session) {
 }
 
 // Get SIOP flow QR code for login via mobile
-function get_siop_qr(res) {
-    let state = res.sessionID
+function get_siop_qr(req) {
+    let state = req.sessionID
 
     // Get redirect URI and DID
     const redirect_uri = config.siop.redirect_uri;
@@ -334,7 +334,7 @@ app.get('/loginSiop', async (req, res) => {
 
 
     debug('GET /loginSiop: Login via VC requested');
-	const qrcode = get_siop_qr(res)
+	const qrcode = get_siop_qr(req)
 	qr.toDataURL(qrcode, (err, src) => {
 		res.render("siop",  {
 			title: config.title,
@@ -348,28 +348,21 @@ app.get('/loginSiop', async (req, res) => {
 app.get('/poll', async (req, res) => {
 
 	info('Poll VC from ' + config.siop.verifier_uri );
-	request(config.siop.verifier_uri + "/verifier/api/v1/token/" + req.sessionID, function (error, response, body) {
-		if (!error && response.statusCode == 200) {
-			console.log("Success")
-		        if (body === "expired") {
-			    debug("Token has expired");
-			    req.session.destroy()
-			}
-		        debug(response);
-		        console.log(body.JSON)
+
 		        // TODO:
 		        // After retrieval of access token, store it in session with the correct CB host
 		        // req.session.access_token = result.access_token;
 		        // req.session.cb_endpoint = config.cb_endpoint_siop;
-		} else  {
-			console.log("error")
-			console.log(error)
-		}
-	  })
-
+	
 	if(Date.now() > req.session.cookie.expires) {
 		res.send({data: "expired"})
 	}
+	request(config.siop.verifier_uri + "/verifier/api/v1/token/" + req.sessionID, function (error, response, body) {
+		if (!error && response.statusCode == 200) {
+			const token = body
+		} 
+	  })
+
 	res.send({data: "pending"})
 });
 
