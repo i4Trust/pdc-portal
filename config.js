@@ -70,6 +70,9 @@ if (user_cfg.oidc) {
 if (user_cfg.cb && user_cfg.cb.endpoint) {
     config.cb_endpoint = user_cfg.cb.endpoint;
 }
+if (user_cfg.cb && user_cfg.cb.endpoint_siop) {
+    config.cb_endpoint_siop = user_cfg.cb.endpoint_siop;
+}
 
 // Web server
 if (user_cfg.express && user_cfg.express.port) {
@@ -82,6 +85,18 @@ config.redirect_uri = config.url + config.redirect_uri_path;
 // IDP
 if (user_cfg.idp) {
     config.idp = user_cfg.idp;
+}
+
+// SIOP
+config.siop = {
+    enabled: false,
+    redirect_uri: user_cfg.siop.redirect_uri,
+    verifier_uri: user_cfg.siop.verifier_uri,
+    did: user_cfg.siop.did,
+    scope: user_cfg.siop.scope
+}
+if (user_cfg.siop && user_cfg.siop.enabled) {
+    config.siop.enabled = true
 }
 
 // Debug output of config
