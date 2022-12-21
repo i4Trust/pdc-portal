@@ -1,0 +1,32 @@
+extends default
+
+block content
+  div.container-siop
+    div.content-row
+      h2 Scan QR with your mobile
+    div.content-row
+      img(src="" + qr)
+  script. 
+    const intervalID = setInterval(pollServer, 1000, 'nonce');
+
+    async function pollServer(a) {
+        try {
+            const response = await fetch('/poll')
+            if (!response.ok) {
+                return
+            }
+            const data = await response.text()
+            if (data === "expired") {
+                location = "/"
+                return
+            }
+            if (data === "pending") {
+                console.log("Pending")
+                return
+            }
+            location = "/portal"
+            return
+        } catch (error) {
+            return
+        }
+    }

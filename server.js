@@ -6,20 +6,36 @@ const fetch = require('node-fetch');
 const jose = require('node-jose');
 var jwt = require('jsonwebtoken').decode;
 var bodyParser = require('body-parser');
+const crypto = require('crypto');
 const path = require('path');
 const favicon = require('serve-favicon');
 const express = require('express');
+const { info } = require('console');
+const request = require('request');
+const qr = require('qrcode')
+const session = require('express-session')
 const app = express();
+
 
 app.set('view engine', 'pug');
 app.use(express.static(__dirname + '/public'));
 app.use(favicon(path.join(__dirname, 'public/images', 'favicon.ico')));
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(session({
+	genid: function(req) {
+	  return crypto.randomBytes(16).toString('hex')
+	},
+	secret: crypto.randomBytes(16).toString('hex'),
+	// 5 min
+	cookie: {
+		maxAge: 5 * 60 * 1000
+	  }
+
+}))
 
 // Global variables
 global.portal_jwt = null;
 global.user_idp = null;
-global.user_access_token = null;
 
 // Prepare CRT
 const crt_regex = /^-----BEGIN CERTIFICATE-----\n([\s\S]+?)\n-----END CERTIFICATE-----$/gm;
@@ -155,12 +171,12 @@ async function token(code, jwt, idp) {
 }
 
 // GET delivery attributes
-async function get_delivery(delivery_id) {
+async function get_delivery(delivery_id, req_session) {
     let result = {
 	err: null,
 	delivery: null
     }
-    var path = config.cb_endpoint + '/entities/' + delivery_id;
+    var path = req_session.cb_endpoint + '/entities/' + delivery_id;
     var url = new URL(path);
     url.searchParams.append('options', 'keyValues');
 
@@ -168,7 +184,7 @@ async function get_delivery(delivery_id) {
 	debug('Requesting data for delivery order at GET: %o', url.toString());
 	const get_response = await fetch(url, {
 	    method: 'GET',
-	    headers: { 'Authorization': 'Bearer ' + user_access_token }
+	    headers: { 'Authorization': 'Bearer ' + req_session.access_token }
 	});
 	if (get_response.status != 200) {
 	    const errorBody = await get_response.text();
@@ -193,12 +209,12 @@ async function get_delivery(delivery_id) {
 }
 
 // PATCH change delivery attribute
-async function patch_delivery(id, attr, val) {
+async function patch_delivery(id, attr, val, req_session) {
     let result = {
 	err: null,
 	status: null
     }
-    var path = config.cb_endpoint + '/entities/' + id + '/attrs/' + attr;
+    var path = req_session.cb_endpoint + '/entities/' + id + '/attrs/' + attr;
     var url = new URL(path);
     const body = {
 	type: "Property",
@@ -211,7 +227,7 @@ async function patch_delivery(id, attr, val) {
 	debug('PATCH request body: %j', body);
 	const patch_response = await fetch(url, {
 	    method: 'PATCH',
-	    headers: { 'Authorization': 'Bearer ' + user_access_token,
+	    headers: { 'Authorization': 'Bearer ' + req_session.access_token,
 		       'Content-Type': 'application/json'
 		     },
 	    body: JSON.stringify(body)
@@ -242,14 +258,47 @@ function render_error(res, user, error) {
 }
 
 // Obtain email parameter from JWT access_token of user
-async function evaluate_user() {
-    var user = null;
-    if (user_access_token) {
-	var decoded = jwt(user_access_token)
-	user = decoded['email'];
-    } 
-    return user;
+async function evaluate_user(req_session) {
+    if (req_session.access_token) {
+		var decoded = jwt(req_session.access_token)
+		if (decoded['email']) {
+			// plain oidc
+			return decoded['email']
+		} else if (decoded['verifiableCredential']){
+			// we have a vc
+			return decoded['verifiableCredential']['credentialSubject']['firstName'] + " "+ decoded['verifiableCredential']['credentialSubject']['familyName']
+		}
+
+	} 
+    return null;
 }
+
+// Get SIOP flow QR code for login via mobile
+function get_siop_qr(req) {
+    let state = req.sessionID
+
+    // Get redirect URI and DID
+    const redirect_uri = config.siop.redirect_uri;
+    const did = config.siop.did;
+
+    // Further parameters
+    const scope = config.siop.scope;
+    const response_type = "vp_token";
+    const response_mode = "post";
+
+    // Build auth request
+    let auth_request = "openid://?";
+    auth_request += "scope="+scope;
+    auth_request += "&response_type="+response_type;
+    auth_request += "&response_mode="+response_mode;
+    auth_request += "&client_id="+did;
+    auth_request += "&redirect_uri="+redirect_uri;
+    auth_request += "&state="+state;
+    auth_request += "&nonce="+crypto.randomBytes(16).toString('base64');
+
+    return auth_request;
+}
+
 
 /*
   Routes
@@ -261,7 +310,8 @@ app.get('/', (req, res) => {
     debug('GET /: Call to main page');
     res.render('index', {
 	title: config.title,
-	idps: config.idp
+	idps: config.idp,
+	siop: config.siop.enabled
     });
 });
 
@@ -283,6 +333,41 @@ app.get('/login', async (req, res) => {
     }
 });
 
+// Perform login via VC SIOP flow
+app.get('/loginSiop', async (req, res) => {
+
+
+    debug('GET /loginSiop: Login via VC requested');
+	const qrcode = get_siop_qr(req)
+	qr.toDataURL(qrcode, (err, src) => {
+		res.render("siop",  {
+			title: config.title,
+			qr: src,
+			verifierHost: config.siop.verifier_uri
+			});
+	})
+
+});
+
+app.get('/poll', async (req, res) => {
+
+	info('Poll VC from ' + config.siop.verifier_uri );
+	
+	if(Date.now() > req.session.cookie.expires) {
+		res.send('expired')
+	}
+	request(config.siop.verifier_uri + "/verifier/api/v1/token/" + req.sessionID, function (error, response, body) {
+		if (!error && response.statusCode == 200) {
+			req.session.access_token = body
+			req.session.cb_endpoint = config.cb_endpoint_siop
+			res.send('logged_in')
+		} else {
+			res.send('pending')
+		}
+	})
+
+});
+
 // /redirect
 // Redirect endpoint for code flow
 app.get(config.redirect_uri_path, async (req, res) => {
@@ -296,7 +381,8 @@ app.get(config.redirect_uri_path, async (req, res) => {
 	    render_error(res, null, '/token: ' + result.err)
 	    return;
 	} else if (result.access_token) {
-	    user_access_token = result.access_token;
+	    req.session.access_token = result.access_token;
+	    req.session.cb_endpoint = config.cb_endpoint;
 	    debug('Login succeeded, redirecting to /portal');
 	    res.redirect('/portal');
 	} else {
@@ -310,15 +396,16 @@ app.get(config.redirect_uri_path, async (req, res) => {
 // /logout
 // Perform logout: Delete user token and redirect to main page
 app.get('/logout', (req, res) => {
-    user_access_token = null;
+    req.session.access_token = null;
+    req.session.destroy();
     res.redirect('/');
 })
 
 // GET /portal
 // Display portal start page after login
 app.get('/portal', async (req, res) => {
-    debug('GET /portal: Call to portal page');
-    var user = await evaluate_user();
+    info('GET /portal: Call to portal page');
+    var user = await evaluate_user(req.session);
     if (!user) {
 	debug('User was not logged in');
 	render_error(res, null, 'Not logged in');
@@ -335,8 +422,8 @@ app.get('/portal', async (req, res) => {
 // POST /portal
 // View/change  delivery order
 app.post('/portal', async (req, res) => {
-    debug('POST /portal: Updating portal page');
-    var user = await evaluate_user();
+    info('POST /portal: Updating portal page');
+    var user = await evaluate_user(req.session);
     if (!user) {
 	debug('User was not logged in');
 	render_error(res, null, 'Not logged in');
@@ -349,7 +436,7 @@ app.post('/portal', async (req, res) => {
     if (req.body.delivery_change_attr) {
 	const change_attr = req.body.delivery_change_attr;
 	const change_val = req.body.delivery_change_val;
-	const patch_result = await patch_delivery(delivery_id, change_attr, change_val);
+	const patch_result = await patch_delivery(delivery_id, change_attr, change_val, req.session);
 	if (patch_result.err) {
 	    render_error(res, user, 'Failure patching delivery order: ' + patch_result.err)
 	    return;
@@ -357,7 +444,7 @@ app.post('/portal', async (req, res) => {
     }
     
     // Get attributes of delivery ID
-    const result = await get_delivery(delivery_id)
+    const result = await get_delivery(delivery_id, req.session)
     if (result.err) {
 	render_error(res, user, 'Failure retrieving delivery order: ' + result.err)
 	return;

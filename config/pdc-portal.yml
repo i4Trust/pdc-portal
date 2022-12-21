@@ -26,13 +26,28 @@ oidc:
 
 # Context Broker configuration
 cb:
-  # Endpoint of (API-Umbrella protected) NGSI-LD API
-  endpoint: "https://localhost/ngsi-ld/v1"
+  # Endpoint of (PEP/PDP protected) NGSI-LD API (via OIDC flow)
+  endpoint: "https://localhost/packetdelivery/ngsi-ld/v1"
+  # Endpoint of (PEP/PDP protected) NGSI-LD API (via SIOP flow)
+  endpoint_siop: "https://pdc-kong.i4trust-demo.fiware.dev/orion-vc/ngsi-ld/v1"
 
 # Configuration of express web server
 express:
   # Port (Internal port of the express web server)
   port: 7000
+
+# Configuration for SIOP flow
+siop:
+  # SIOP flow enabled
+  enabled: true
+  # Redirect URI that the wallet will use to send the VC/VP
+  redirect_uri: https://i4trust-demo-pdc-backend-vcbackend-i4trust-demo.apps.fiware.fiware.dev/verifier/api/v1/authenticationresponse
+  # Base uri of the verifier
+  verifier_uri: https://i4trust-demo-pdc-backend-vcbackend-i4trust-demo.apps.fiware.fiware.dev
+  # DID of verifier
+  did: "did:key:z6Mkk5iPrXg35fC4aq4yp3QadqVGKFhQL2b76fy6QKmSXJNT"
+  # Type of credential that the Verifier will accept
+  scope: "dsba.credentials.presentation.PacketDeliveryService"
 
 # IDP configuration for login
 idp:
