@@ -36,8 +36,6 @@ app.use(session({
 // Global variables
 global.portal_jwt = null;
 global.user_idp = null;
-global.user_access_token = null;
-global.siop_nonce = null;
 
 // Prepare CRT
 const crt_regex = /^-----BEGIN CERTIFICATE-----\n([\s\S]+?)\n-----END CERTIFICATE-----$/gm;
@@ -173,12 +171,12 @@ async function token(code, jwt, idp) {
 }
 
 // GET delivery attributes
-async function get_delivery(delivery_id) {
+async function get_delivery(delivery_id, req_session) {
     let result = {
 	err: null,
 	delivery: null
     }
-    var path = config.cb_endpoint + '/entities/' + delivery_id;
+    var path = req_session.cb_endpoint + '/entities/' + delivery_id;
     var url = new URL(path);
     url.searchParams.append('options', 'keyValues');
 
@@ -186,7 +184,7 @@ async function get_delivery(delivery_id) {
 	debug('Requesting data for delivery order at GET: %o', url.toString());
 	const get_response = await fetch(url, {
 	    method: 'GET',
-	    headers: { 'Authorization': 'Bearer ' + user_access_token }
+	    headers: { 'Authorization': 'Bearer ' + req_session.access_token }
 	});
 	if (get_response.status != 200) {
 	    const errorBody = await get_response.text();
@@ -211,12 +209,12 @@ async function get_delivery(delivery_id) {
 }
 
 // PATCH change delivery attribute
-async function patch_delivery(id, attr, val) {
+async function patch_delivery(id, attr, val, req_session) {
     let result = {
 	err: null,
 	status: null
     }
-    var path = config.cb_endpoint + '/entities/' + id + '/attrs/' + attr;
+    var path = req_session.cb_endpoint + '/entities/' + id + '/attrs/' + attr;
     var url = new URL(path);
     const body = {
 	type: "Property",
@@ -229,7 +227,7 @@ async function patch_delivery(id, attr, val) {
 	debug('PATCH request body: %j', body);
 	const patch_response = await fetch(url, {
 	    method: 'PATCH',
-	    headers: { 'Authorization': 'Bearer ' + user_access_token,
+	    headers: { 'Authorization': 'Bearer ' + req_session.access_token,
 		       'Content-Type': 'application/json'
 		     },
 	    body: JSON.stringify(body)
@@ -260,10 +258,10 @@ function render_error(res, user, error) {
 }
 
 // Obtain email parameter from JWT access_token of user
-async function evaluate_user() {
+async function evaluate_user(req_session) {
     var user = null;
-    if (user_access_token) {
-	var decoded = jwt(user_access_token)
+    if (req_session.access_token) {
+	var decoded = jwt(req_session.access_token)
 	user = decoded['email'];
     } 
     return user;
@@ -350,6 +348,12 @@ app.get('/loginSiop', async (req, res) => {
 app.get('/poll', async (req, res) => {
 
 	info('Poll VC from ' + config.siop.verifier_uri );
+
+		        // TODO:
+		        // After retrieval of access token, store it in session with the correct CB host
+		        // req.session.access_token = result.access_token;
+		        // req.session.cb_endpoint = config.cb_endpoint_siop;
+	
 	if(Date.now() > req.session.cookie.expires) {
 		res.send({data: "expired"})
 	}
@@ -375,7 +379,8 @@ app.get(config.redirect_uri_path, async (req, res) => {
 	    render_error(res, null, '/token: ' + result.err)
 	    return;
 	} else if (result.access_token) {
-	    user_access_token = result.access_token;
+	    req.session.access_token = result.access_token;
+	    req.session.cb_endpoint = config.cb_endpoint;
 	    debug('Login succeeded, redirecting to /portal');
 	    res.redirect('/portal');
 	} else {
@@ -389,7 +394,8 @@ app.get(config.redirect_uri_path, async (req, res) => {
 // /logout
 // Perform logout: Delete user token and redirect to main page
 app.get('/logout', (req, res) => {
-    user_access_token = null;
+    req.session.access_token = null;
+    req.session.destroy();
     res.redirect('/');
 })
 
@@ -397,7 +403,7 @@ app.get('/logout', (req, res) => {
 // Display portal start page after login
 app.get('/portal', async (req, res) => {
     debug('GET /portal: Call to portal page');
-    var user = await evaluate_user();
+    var user = await evaluate_user(req.session);
     if (!user) {
 	debug('User was not logged in');
 	render_error(res, null, 'Not logged in');
@@ -415,7 +421,7 @@ app.get('/portal', async (req, res) => {
 // View/change  delivery order
 app.post('/portal', async (req, res) => {
     debug('POST /portal: Updating portal page');
-    var user = await evaluate_user();
+    var user = await evaluate_user(req.session);
     if (!user) {
 	debug('User was not logged in');
 	render_error(res, null, 'Not logged in');
@@ -428,7 +434,7 @@ app.post('/portal', async (req, res) => {
     if (req.body.delivery_change_attr) {
 	const change_attr = req.body.delivery_change_attr;
 	const change_val = req.body.delivery_change_val;
-	const patch_result = await patch_delivery(delivery_id, change_attr, change_val);
+	const patch_result = await patch_delivery(delivery_id, change_attr, change_val, req.session);
 	if (patch_result.err) {
 	    render_error(res, user, 'Failure patching delivery order: ' + patch_result.err)
 	    return;
@@ -436,7 +442,7 @@ app.post('/portal', async (req, res) => {
     }
     
     // Get attributes of delivery ID
-    const result = await get_delivery(delivery_id)
+    const result = await get_delivery(delivery_id, req.session)
     if (result.err) {
 	render_error(res, user, 'Failure retrieving delivery order: ' + result.err)
 	return;
