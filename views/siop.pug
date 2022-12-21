@@ -17,15 +17,14 @@ block content
             }
             const data = await response.text()
             if (data === "expired") {
-                location = "/loginexpired"
+                location = "/"
                 return
             }
             if (data === "pending") {
+                console.log("Pending")
                 return
             }
-
-            console.log("Received:", data)
-            //location = "/receivecredential"
+            location = "/portal"
             return
         } catch (error) {
             return

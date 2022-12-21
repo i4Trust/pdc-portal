@@ -259,12 +259,19 @@ function render_error(res, user, error) {
 
 // Obtain email parameter from JWT access_token of user
 async function evaluate_user(req_session) {
-    var user = null;
+	console.log(req_session)
     if (req_session.access_token) {
-	var decoded = jwt(req_session.access_token)
-	user = decoded['email'];
-    } 
-    return user;
+		var decoded = jwt(req_session.access_token)
+		if (decoded['email']) {
+			// plain oidc
+			return decoded['email']
+		} else if (decoded['verifiableCredential']){
+			// we have a vc
+			return decoded['verifiableCredential']['credentialSubject']['firstName'] + " "+ decoded['verifiableCredential']['credentialSubject']['familyName']
+		}
+
+	} 
+    return null;
 }
 
 // Get SIOP flow QR code for login via mobile
@@ -348,22 +355,20 @@ app.get('/loginSiop', async (req, res) => {
 app.get('/poll', async (req, res) => {
 
 	info('Poll VC from ' + config.siop.verifier_uri );
-
-		        // TODO:
-		        // After retrieval of access token, store it in session with the correct CB host
-		        // req.session.access_token = result.access_token;
-		        // req.session.cb_endpoint = config.cb_endpoint_siop;
 	
 	if(Date.now() > req.session.cookie.expires) {
-		res.send({data: "expired"})
+		res.send('expired')
 	}
 	request(config.siop.verifier_uri + "/verifier/api/v1/token/" + req.sessionID, function (error, response, body) {
 		if (!error && response.statusCode == 200) {
-			const token = body
-		} 
-	  })
+			req.session.access_token = body
+			req.session.cb_endpoint = config.cb_endpoint_siop
+			res.send('logged_in')
+		} else {
+			res.send('pending')
+		}
+	})
 
-	res.send({data: "pending"})
 });
 
 // /redirect
@@ -402,7 +407,7 @@ app.get('/logout', (req, res) => {
 // GET /portal
 // Display portal start page after login
 app.get('/portal', async (req, res) => {
-    debug('GET /portal: Call to portal page');
+    info('GET /portal: Call to portal page');
     var user = await evaluate_user(req.session);
     if (!user) {
 	debug('User was not logged in');
@@ -420,7 +425,7 @@ app.get('/portal', async (req, res) => {
 // POST /portal
 // View/change  delivery order
 app.post('/portal', async (req, res) => {
-    debug('POST /portal: Updating portal page');
+    info('POST /portal: Updating portal page');
     var user = await evaluate_user(req.session);
     if (!user) {
 	debug('User was not logged in');

@@ -29,7 +29,7 @@ cb:
   # Endpoint of (PEP/PDP protected) NGSI-LD API (via OIDC flow)
   endpoint: "https://localhost/packetdelivery/ngsi-ld/v1"
   # Endpoint of (PEP/PDP protected) NGSI-LD API (via SIOP flow)
-  endpoint_siop: "https://localhost/orion-vc/ngsi-ld/v1"
+  endpoint_siop: "https://pdc-kong.i4trust-demo.fiware.dev/orion-vc/ngsi-ld/v1"
 
 # Configuration of express web server
 express:
