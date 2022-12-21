@@ -259,7 +259,6 @@ function render_error(res, user, error) {
 
 // Obtain email parameter from JWT access_token of user
 async function evaluate_user(req_session) {
-	console.log(req_session)
     if (req_session.access_token) {
 		var decoded = jwt(req_session.access_token)
 		if (decoded['email']) {
