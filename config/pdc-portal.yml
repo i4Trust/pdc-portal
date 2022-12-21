@@ -43,7 +43,7 @@ siop:
   # Base uri of the verifier
   verifier_uri: https://i4trust-demo-pdc-backend-vcbackend-i4trust-demo.apps.fiware.fiware.dev
   # DID of verifier
-  did: "did:key:z6MkufEFkFSCXg1DHUsZbYuWcGf4QHat34YSoVgs67ED9m4S"
+  did: "did:key:z6Mkk5iPrXg35fC4aq4yp3QadqVGKFhQL2b76fy6QKmSXJNT"
   # Type of credential that the Verifier will accept
   scope: "dsba.credentials.presentation.PacketDeliveryService"
 
