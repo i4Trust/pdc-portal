@@ -363,7 +363,7 @@ app.get('/poll', async (req, res) => {
 			req.session.cb_endpoint = config.cb_endpoint_siop
 			res.send('logged_in')
 		} else {
-			info('Error ' + error + ' code ' + response.statusCode)
+			info('Error ' + error)
 			res.send('pending')
 		}
 	})
