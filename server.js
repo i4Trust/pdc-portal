@@ -357,8 +357,8 @@ app.get('/poll', async (req, res) => {
 		res.send('expired')
 	}
 	request(config.siop.verifier_uri + "/verifier/api/v1/token/" + req.sessionID, function (error, response, body) {
-		info('Response ' + response.statusCode)
 		if (!error && response.statusCode == 200) {
+			info('Response ' + response.statusCode)
 			req.session.access_token = body
 			req.session.cb_endpoint = config.cb_endpoint_siop
 			res.send('logged_in')
