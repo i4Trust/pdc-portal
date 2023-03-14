@@ -351,18 +351,19 @@ app.get('/loginSiop', async (req, res) => {
 
 app.get('/poll', async (req, res) => {
 
-	info('Poll VC from ' + config.siop.verifier_uri );
+	info('Poll VC from ' + config.siop.verifier_uri + '/verifier/api/v1/token/' + req.sessionID);
 	
 	if(Date.now() > req.session.cookie.expires) {
 		res.send('expired')
 	}
 	request(config.siop.verifier_uri + "/verifier/api/v1/token/" + req.sessionID, function (error, response, body) {
-		info('Response ' + response)
+		info('Response ' + response.statusCode)
 		if (!error && response.statusCode == 200) {
 			req.session.access_token = body
 			req.session.cb_endpoint = config.cb_endpoint_siop
 			res.send('logged_in')
 		} else {
+			info('Error ' + error + ' code ' + response.statusCode)
 			res.send('pending')
 		}
 	})
