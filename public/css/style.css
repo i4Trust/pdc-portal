@@ -159,9 +159,7 @@ body {
 .table {
     text-align: center;
     width: 70%;
-    margin-left: auto;
-    margin-right: auto;
-    margin: 0 auto;
+    table-layout: auto;
 }
 
 .highlight {

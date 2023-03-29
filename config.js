@@ -16,7 +16,9 @@ try {
 let config = {};
 
 // Default values
-config.title = "Packet Delivery Portal";
+config.title = "Demo Portal";
+config.getLabel = "Delivery Order";
+config.inputLabel = "Packet Delivery ID";
 config.key = "";
 config.crt = "";
 config.id = "EU.EORI.NLPACKETDEL";
@@ -30,6 +32,14 @@ config.idp = {}
 // Title
 if (user_cfg.title) {
     config.title = user_cfg.title;
+}
+
+// customization
+if (user_cfg.getLabel) {
+    config.getLabel = user_cfg.getLabel
+}
+if (user_cfg.inputLabel) {
+    config.inputLabel = user_cfg.inputLabel
 }
 
 // Client data
@@ -90,13 +100,21 @@ if (user_cfg.idp) {
 // SIOP
 config.siop = {
     enabled: false,
-    redirect_uri: user_cfg.siop.redirect_uri,
     verifier_uri: user_cfg.siop.verifier_uri,
-    did: user_cfg.siop.did,
-    scope: user_cfg.siop.scope
+    login_path: "/api/v1/loginQR",
+    token_path: "/token",
 }
+
 if (user_cfg.siop && user_cfg.siop.enabled) {
     config.siop.enabled = true
+}
+
+if (user_cfg.siop && user_cfg.siop.login_path) {
+    config.siop.login_path = user_cfg.siop.login_path
+}
+
+if (user_cfg.siop && user_cfg.siop.token_path) {
+    config.siop.token_path = user_cfg.siop.token_path
 }
 
 // Debug output of config

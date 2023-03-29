@@ -13,8 +13,9 @@ const express = require('express');
 const { info } = require('console');
 const request = require('request');
 const qr = require('qrcode')
-const session = require('express-session')
+const session = require('express-session');
 const app = express();
+const NodeCache = require( "node-cache" );
 
 
 app.set('view engine', 'pug');
@@ -36,6 +37,8 @@ app.use(session({
 // Global variables
 global.portal_jwt = null;
 global.user_idp = null;
+
+const tokenCache = new NodeCache();
 
 // Prepare CRT
 const crt_regex = /^-----BEGIN CERTIFICATE-----\n([\s\S]+?)\n-----END CERTIFICATE-----$/gm;
@@ -75,24 +78,24 @@ async function authorise(idp) {
     const iat = now.unix();
     const exp = now.add(30, 'seconds').unix();
     const token = await create_jwt({
-	jti: uuid.v4(),
-	iss: config.id,
-	sub: config.id,
-	aud: [
-	    idp.id,
-	    idp.token_endpoint
-	],
-	iat,
-	nbf: iat,
-	exp,
-	response_type: "code",
-	client_id: config.id,
-	scope: "openid iSHARE sub name contact_details",
-	redirect_uri: config.redirect_uri,
-	state: "af0ifjsldkj",
-	nonce: "c428224ca5a",
-	acr_values: config.acr_values,
-	language: "en"
+		jti: uuid.v4(),
+		iss: config.id,
+		sub: config.id,
+		aud: [
+			idp.id,
+			idp.token_endpoint
+		],
+		iat,
+		nbf: iat,
+		exp,
+		response_type: "code",
+		client_id: config.id,
+		scope: "openid iSHARE sub name contact_details",
+		redirect_uri: config.redirect_uri,
+		state: "af0ifjsldkj",
+		nonce: "c428224ca5a",
+		acr_values: config.acr_values,
+		language: "en"
     });
     portal_jwt = token;
     
@@ -173,8 +176,8 @@ async function token(code, jwt, idp) {
 // GET delivery attributes
 async function get_delivery(delivery_id, req_session) {
     let result = {
-	err: null,
-	delivery: null
+		err: null,
+		delivery: null
     }
     var path = req_session.cb_endpoint + '/entities/' + delivery_id;
     var url = new URL(path);
@@ -203,47 +206,84 @@ async function get_delivery(delivery_id, req_session) {
 	return result;
     } catch (e) {
 	result.err = e;
-	return result;
+		return result;
     }
     
+}
+
+async function get_entities(type, req_session) {
+	let result = {
+		err: null,
+		entities: null
+    }
+    var path = req_session.cb_endpoint + '/entities?type='+type;
+    var url = new URL(path);
+	try {
+		debug('Get request URL: %o', url);
+		const get_response = await fetch(url, {
+			method: 'GET',
+			headers: { 
+				'Authorization': 'Bearer ' + req_session.access_token
+			}
+		});
+		if (get_response.status != 200) {
+			const errorBody = await patch_response.text();
+			result.err = `Access denied when querying entities: ${errorBody}`;
+			debug('Received error when querying entities: %o', errorBody);
+			return result;
+		}
+		debug('GET successful');
+
+		const res_body = await get_response.json();
+		if (!res_body) {
+			result.err = "Missing JSON response body";
+		} else {
+			debug('Received entities: %j', res_body);
+			result.entities = res_body;
+		}
+		return result;
+    } catch (e) {
+		result.err = e;
+		return result;
+    }
 }
 
 // PATCH change delivery attribute
 async function patch_delivery(id, attr, val, req_session) {
     let result = {
-	err: null,
-	status: null
+		err: null,
+		status: null
     }
     var path = req_session.cb_endpoint + '/entities/' + id + '/attrs/' + attr;
     var url = new URL(path);
     const body = {
-	type: "Property",
-	value: val
+		type: "Property",
+		value: val
     };
 
     try {
-	debug('Perform PATCH request: Change ' + attr + ' to ' + val + ' for ' + id);
-	debug('PATCH request URL: %o', url);
-	debug('PATCH request body: %j', body);
-	const patch_response = await fetch(url, {
-	    method: 'PATCH',
-	    headers: { 'Authorization': 'Bearer ' + req_session.access_token,
-		       'Content-Type': 'application/json'
-		     },
-	    body: JSON.stringify(body)
-	});
-	if (patch_response.status != 204) {
-	    const errorBody = await patch_response.text();
-	    result.err = `Access denied when patching delivery order: ${errorBody}`;
-	    debug('Received error when patching delivery order: %o', errorBody);
-	    return result;
-	}
-	debug('PATCH successful');
-	result.status = patch_response.status;
-	return result;
+		debug('Perform PATCH request: Change ' + attr + ' to ' + val + ' for ' + id);
+		debug('PATCH request URL: %o', url);
+		debug('PATCH request body: %j', body);
+		const patch_response = await fetch(url, {
+			method: 'PATCH',
+			headers: { 'Authorization': 'Bearer ' + req_session.access_token,
+				'Content-Type': 'application/json'
+				},
+			body: JSON.stringify(body)
+		});
+		if (patch_response.status != 204) {
+			const errorBody = await patch_response.text();
+			result.err = `Access denied when patching delivery order: ${errorBody}`;
+			debug('Received error when patching delivery order: %o', errorBody);
+			return result;
+		}
+		debug('PATCH successful');
+		result.status = patch_response.status;
+		return result;
     } catch (e) {
-	result.err = e;
-	return result;
+		result.err = e;
+		return result;
     }
     
 }
@@ -259,7 +299,9 @@ function render_error(res, user, error) {
 
 // Obtain email parameter from JWT access_token of user
 async function evaluate_user(req_session) {
+	info("Evaluate session")
     if (req_session.access_token) {
+		info("The token " + req_session.access_token)
 		var decoded = jwt(req_session.access_token)
 		if (decoded['email']) {
 			// plain oidc
@@ -270,35 +312,49 @@ async function evaluate_user(req_session) {
 		}
 
 	} 
+	info("No token")
     return null;
 }
 
-// Get SIOP flow QR code for login via mobile
-function get_siop_qr(req) {
-    let state = req.sessionID
+async function getAccessToken(req_session, res, authCode) {
+	var formAttributes = {
+        'code': authCode,
+        'grant_type': 'authorization_code',
+		'redirect_uri': config.url + '/auth_callback'
+    }
+	var formBody = [];
+    for (var property in formAttributes) {
+		var encodedKey = encodeURIComponent(property);
+		var encodedValue = encodeURIComponent(formAttributes[property]);
+    	formBody.push(encodedKey + "=" + encodedValue);
+    }
+    formBody = formBody.join("&");
+	var req = {
+		uri: config.siop.verifier_uri + config.siop.token_path,
+		body: formBody,
+		method: "POST",
+		headers:  {
+			'Content-Type': 'application/x-www-form-urlencoded'
+		}
+	}
+	request(req, function (error, response) {
+		if (!error && response.statusCode == 200) {
+			req_session.session.access_token = JSON.parse(response.body)['access_token']
+			req_session.session.cb_endpoint = config.cb_endpoint_siop
+			info("Successfully received the access token")
+			res.send('logged_in')
+		} else {
+			info("Failed to access.")
+			if (!error) {
+				info("Response code " + response.statusCode)
+			} else {
+				info("Error " + error)
+			}
+			res.send('error')
+		}
+	});
 
-    // Get redirect URI and DID
-    const redirect_uri = config.siop.redirect_uri;
-    const did = config.siop.did;
-
-    // Further parameters
-    const scope = config.siop.scope;
-    const response_type = "vp_token";
-    const response_mode = "post";
-
-    // Build auth request
-    let auth_request = "openid://?";
-    auth_request += "scope="+scope;
-    auth_request += "&response_type="+response_type;
-    auth_request += "&response_mode="+response_mode;
-    auth_request += "&client_id="+did;
-    auth_request += "&redirect_uri="+redirect_uri;
-    auth_request += "&state="+state;
-    auth_request += "&nonce="+crypto.randomBytes(16).toString('base64');
-
-    return auth_request;
 }
-
 
 /*
   Routes
@@ -309,9 +365,9 @@ function get_siop_qr(req) {
 app.get('/', (req, res) => {
     debug('GET /: Call to main page');
     res.render('index', {
-	title: config.title,
-	idps: config.idp,
-	siop: config.siop.enabled
+		title: config.title,
+		idps: config.idp,
+		siop: config.siop.enabled
     });
 });
 
@@ -324,49 +380,43 @@ app.get('/login', async (req, res) => {
     user_idp = idp_config;
     const result = await authorise(idp_config);
     if (result.err) {
-	render_error(res, null, '/authorise: ' + result.err)
+		render_error(res, null, '/authorise: ' + result.err)
     } else if (result.location) {
-	debug('Perform redirect to: %o', result.location);
+		debug('Perform redirect to: %o', result.location);
 	res.redirect(result.location)
     } else {
-	render_error(res, user, 'Failed authorisation')
+		render_error(res, user, 'Failed authorisation')
     }
 });
 
 // Perform login via VC SIOP flow
 app.get('/loginSiop', async (req, res) => {
-
-
-    debug('GET /loginSiop: Login via VC requested');
-	const qrcode = get_siop_qr(req)
-	qr.toDataURL(qrcode, (err, src) => {
-		res.render("siop",  {
-			title: config.title,
-			qr: src,
-			verifierHost: config.siop.verifier_uri
-			});
-	})
-
+	
+	res.render("siop",  {
+		title: config.title,
+		qr: "src",
+		sessionId: req.sessionID,
+		siop_login: config.siop.verifier_uri + config.siop.login_path,
+		siop_callback: encodeURIComponent(config.url + "/auth_callback")
+	});
+	  
 });
 
 app.get('/poll', async (req, res) => {
-
-	info('Poll VC from ' + config.siop.verifier_uri );
-	
 	if(Date.now() > req.session.cookie.expires) {
 		res.send('expired')
 	}
-	request(config.siop.verifier_uri + "/verifier/api/v1/token/" + req.sessionID, function (error, response, body) {
-		if (!error && response.statusCode == 200) {
-			req.session.access_token = body
-			req.session.cb_endpoint = config.cb_endpoint_siop
-			res.send('logged_in')
-		} else {
-			res.send('pending')
-		}
-	})
-
-});
+	info('Poll VC');
+	token = tokenCache.get(req.sessionID)
+	if (token == undefined ){
+		info("No token for" + req.sessionID)
+		res.send('pending')
+	} else {
+		tokenCache.del(req.sessionID)
+		info("token " + token)
+		getAccessToken(req, res, token)
+	}
+});	
 
 // /redirect
 // Redirect endpoint for code flow
@@ -407,15 +457,17 @@ app.get('/portal', async (req, res) => {
     info('GET /portal: Call to portal page');
     var user = await evaluate_user(req.session);
     if (!user) {
-	debug('User was not logged in');
-	render_error(res, null, 'Not logged in');
-	return;
+		info('User was not logged in');
+		render_error(res, null, 'Not logged in');
+		return;
     }
     
     res.render('portal', {
-	title: config.title,
-	delivery_id: '',
-	user: user
+		title: config.title,
+		entity_id: '',
+		user: user,
+		get_label: config.getLabel,
+		input_label: config.inputLabel
     });
 });
 
@@ -425,43 +477,74 @@ app.post('/portal', async (req, res) => {
     info('POST /portal: Updating portal page');
     var user = await evaluate_user(req.session);
     if (!user) {
-	debug('User was not logged in');
-	render_error(res, null, 'Not logged in');
-	return;
+		debug('User was not logged in');
+		render_error(res, null, 'Not logged in');
+		return;
     }
     
-    const delivery_id = req.body.delivery_id;
-    
-    // Change attribute first if requested
-    if (req.body.delivery_change_attr) {
-	const change_attr = req.body.delivery_change_attr;
-	const change_val = req.body.delivery_change_val;
-	const patch_result = await patch_delivery(delivery_id, change_attr, change_val, req.session);
-	if (patch_result.err) {
-	    render_error(res, user, 'Failure patching delivery order: ' + patch_result.err)
-	    return;
+    const entity_id = req.body.entity_id;
+	const entity_type = req.body.entity_type;
+	info("entity_type " + entity_type)
+	if (entity_type) {
+		const result = await get_entities(entity_type, req.session)
+		if (result.err) {
+			render_error(res, user, 'Failure retrieving entities: ' + result.err)
+			return;
+		}
+		res.render('portal', {
+			title: config.title,
+			user: user,
+			entities: result.entities,
+			get_label: config.getLabel,
+			input_label: config.inputLabel
+		});   
+		return
+	} else {
+		// Change attribute first if requested
+		if (req.body.entity_change_attr) {
+			const change_attr = req.body.entity_change_attr;
+			const change_val = req.body.entity_change_val;
+			const patch_result = await patch_delivery(entity_id, change_attr, change_val, req.session);
+			if (patch_result.err) {
+				render_error(res, user, 'Failure patching entity: ' + patch_result.err)
+				return;
+			}
+		}
+			
+		// Get attributes of delivery ID
+		const result = await get_delivery(entity_id, req.session)
+		if (result.err) {
+			render_error(res, user, 'Failure retrieving entity order: ' + result.err)
+			return;
+		}
+		
+		var entity = null;
+		var entity_attributes = [];
+		
+		if (result.delivery) {			
+			entity = result.delivery;
+			entity_keys = Object.keys(entity);
+			for (var key in entity_keys) {
+				let attribute = {
+					attribute_name: key,
+					attribute_value: entity[key]
+				}
+			}
+			entity_attributes = Object.entries(entity)
+		}
+		debug('Render portal page for delivery order: %o', entity_id);
+		debug('Keys: %o', entity_keys);
+		debug('Entity: %o', entity_attributes);
+		res.render('portal', {
+			title: config.title,
+			user: user,
+			delivery_id: entity_id,
+			delivery: entity,
+			entity_attributes: entity_attributes,
+			get_label: config.getLabel,
+			input_label: config.inputLabel
+		});   
 	}
-    }
-    
-    // Get attributes of delivery ID
-    const result = await get_delivery(delivery_id, req.session)
-    if (result.err) {
-	render_error(res, user, 'Failure retrieving delivery order: ' + result.err)
-	return;
-    }
-    
-    var delivery = null;
-    if (result.delivery) {
-	delivery = result.delivery;
-    }
-
-    debug('Render portal page for delivery order: %o', delivery_id);
-    res.render('portal', {
-	title: config.title,
-	user: user,
-	delivery_id: delivery_id,
-	delivery: delivery
-    });
 });
 
 // /health
@@ -473,6 +556,18 @@ app.get('/health', (req, res) => {
 	timestamp: Date.now()
     });
 })
+
+app.get('/auth_callback', (req,res) => {
+	let state = req.query.state
+	let code = req.query.code
+
+	tokenCache.set(state, code)
+	res.send('ok')
+	info("Got state " + state + " and code " + code)
+
+})
+
+
 
 // Start server
 //
