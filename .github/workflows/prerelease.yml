@@ -39,7 +39,7 @@ jobs:
 
       - name: Get PR Number
         id: pr_number
-        run: echo "$GITHUB_PR_NUMBER"
+        run: echo "::set-output name=nr::$GITHUB_PR_NUMBER"
 
       - name: Set version output
         id: out
