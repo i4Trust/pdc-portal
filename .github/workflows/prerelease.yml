@@ -39,13 +39,12 @@ jobs:
 
       - name: Get PR Number
         id: pr_number
-        #run: echo "::set-output name=nr::$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')"
         run: echo "$GITHUB_PR_NUMBER"
 
       - name: Set version output
         id: out
         run: |
-          echo "::set-output name=version::$(echo ${VERSION}-PRE-${{ steps.pr_number.outputs.nr }})"
+          echo "::set-output name=version::$(echo ${VERSION}-PRE-${GITHUB_PR_NUMBER})"
           echo "::set-output name=plain-version::$(echo ${VERSION})"
 
 
