@@ -11,6 +11,7 @@ on:
 
 env:
   IMAGE_NAME: i4trust/pdc-portal
+  GITHUB_PR_NUMBER: ${{github.event.pull_request.number}}
 
 jobs:
 
@@ -38,7 +39,7 @@ jobs:
 
       - name: Get PR Number
         id: pr_number
-        run: echo "::set-output name=nr::$(echo $GITHUB_REF | awk 'BEGIN { FS = "/" } ; { print $3 }')"
+        run: echo "::set-output name=nr::$GITHUB_PR_NUMBER"
 
       - name: Set version output
         id: out
