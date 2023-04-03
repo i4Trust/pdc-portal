@@ -130,7 +130,7 @@ async function authorise(idp) {
 }
 
 // Send /token
-async function token(code, jwt, idp) {
+async function requestToken(code, jwt, idp) {
     debug('Request /token at IDP');
     let result = {
 	access_token: null,
@@ -426,7 +426,7 @@ app.get(config.redirect_uri_path, async (req, res) => {
 	render_error(res, user, 'Did not receive authorisation code!')
     } else {
 	const code = req.query.code;
-	const result = await token(code, portal_jwt, user_idp);
+	const result = await requestToken(code, portal_jwt, user_idp);
 	if (result.err) {
 	    render_error(res, null, '/token: ' + result.err)
 	    return;
