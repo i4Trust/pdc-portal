@@ -227,7 +227,7 @@ async function get_entities(type, req_session) {
 			}
 		});
 		if (get_response.status != 200) {
-			const errorBody = await patch_response.text();
+			const errorBody = await get_response.text();
 			result.err = `Access denied when querying entities: ${errorBody}`;
 			debug('Received error when querying entities: %o', errorBody);
 			return result;
