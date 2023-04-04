@@ -7,7 +7,8 @@ on:
 
 env:
   IMAGE_NAME: i4trust/pdc-portal
-      
+  IMAGE_NAME_QUAY: quay.io/i4trust/pdc-portal
+  
 jobs:
 
   generate-version:
@@ -78,4 +79,10 @@ jobs:
           docker build --tag ${{ env.IMAGE_NAME }}:${{ needs.generate-version.outputs.version }} .
   
           docker push ${{ env.IMAGE_NAME }}:${{ needs.generate-version.outputs.version }}
+
+      - name: Push to quay.io
+        run: |
+          echo "${{ secrets.QUAY_TOKEN }}" | docker login quay.io -u "${{ secrets.QUAY_USERNAME }}" --password-stdin
+          docker tag ${{ env.IMAGE_NAME }}:${{ needs.generate-version.outputs.version }} ${{ env.IMAGE_NAME_QUAY }}:${{ needs.generate-version.outputs.version }}
+          docker push ${{ env.IMAGE_NAME_QUAY }}:${{ needs.generate-version.outputs.version }}
       
