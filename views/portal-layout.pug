@@ -8,6 +8,9 @@ block topnav
 block content
   div.container
     block search
-
+    if (entities)
+      block entities
+    if (entity)
+      block entity
     if (delivery)
       block delivery

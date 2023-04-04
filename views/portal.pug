@@ -11,62 +11,52 @@ block search
         form(action='/portal', method='POST')
           p.portal-delivery
             | 
-            label(for='delivery_id') Packet Delivery ID:
-            input(type='text', name='delivery_id', id='delivery_id', value=delivery_id, size="50")
-            input(type='submit', value='Get Delivery Order')
+            label(for='entity_type') Type:
+            input(type='text', name='entity_type', id='entity_type', value=entity_type, size="50")
+            input(type='submit', value="Get entities") 
+        form(action='/portal', method='POST')
+          p.portal-delivery
+            | 
+            label(for='entity_id') #{input_label}:
+            input(type='text', name='entity_id', id='entity_id', value=entity_id, size="50")
+            input(type='submit', value=get_label) 
         hr
-  
-block delivery  
+block entities 
   div.content-delivery-row
-        h2.delivery-id
-          | #{delivery.id}
-        table.table
+    h2.delivery-id
+      #{entities}
+    each i in entities
+       table.table
           tr
-            th Name
-            th Value
-            th Action
+            th Type 
+            th Id 
           tr
             td(colspan='3')
               hr
+          tr 
+            td #{i.type}
+            td #{i.id}        
+block delivery  
+  div.content-delivery-row
+    h2.delivery-id
+      | #{delivery.id}
+    table.table
+      thead 
+        tr
+          th Attribute
+          th Values
+      tbody 
+        each i in entity_attributes
           tr
-            td Issuer
-            td #{delivery.issuer}
-            td 
-          tr
-            td Destinee
-            td #{delivery.destinee}
-            td 
-          tr
-            td Delivery Address
-            td #{delivery.deliveryAddress.streetAddress}, #{delivery.deliveryAddress.postalCode} #{delivery.deliveryAddress.addressLocality}, #{delivery.deliveryAddress.addressCountry}
-            td 
-          tr
-            td PDA
-            td.highlight #{delivery.pda}
-            td 
-               form(action='/portal', method='POST')
-                p.delivery-action
-                  | 
-                  input(type='text', name='delivery_change_val', id='delivery_change_val', value=delivery.pda)
-                  input(type='hidden', name='delivery_change_attr', id='delivery_change_attr', value='pda')
-                  input(type='hidden', name='delivery_id', id='delivery_id', value=delivery_id)
-                  input(type='submit', value='Change')
-          tr
-            td PTA
-            td.highlight #{delivery.pta}
-            td 
-              form(action='/portal', method='POST')
-                p.delivery-action
-                  | 
-                  input(type='text', name='delivery_change_val', id='delivery_change_val', value=delivery.pta)
-                  input(type='hidden', name='delivery_change_attr', id='delivery_change_attr', value='pta')
-                  input(type='hidden', name='delivery_id', id='delivery_id', value=delivery_id)
-                  input(type='submit', value='Change')
-          tr
-            td EDA
-            td #{delivery.eda}
-            td
-          tr
-            td ETA
-            td #{delivery.eta}
-            td
+            if i[0] != 'id' && i[0] != 'type' 
+              td #{i[0]}
+              td.highlight #{i[1]} 
+              td 
+                form(action='/portal', method='POST')
+                  p.delivery-action
+                    | 
+                    input(type='text', name='entity_change_val', id='entity_change_val', value=i[1])
+                    input(type='hidden', name='entity_change_attr', id='entity_change_attr', value=i[0])
+                    input(type='hidden', name='entity_id', id='entity_id', value=delivery.id)
+                    input(type='submit', value='Change')
+    
