@@ -248,6 +248,50 @@ async function get_entities(type, req_session) {
     }
 }
 
+async function register_sd(sd, req_session) {
+	let result = {
+		err: null,
+		status: null
+    }
+	const trustedIssuerEntity = {
+		type: "TrustedIssuer",
+		id: "urn:ngsi-ld:TrustedIssuer:" + sd.id,
+		issuer: {
+			type: "Property",
+			value: sd.id
+		},
+		selfDescription: {
+			type: "Property",
+			value: sd	
+		}
+	}
+    var path = req_session.cb_endpoint + '/entities';
+	var url = new URL(path);
+	try {
+		info("Register trusted issuer: " + JSON.stringify(trustedIssuerEntity))
+		const post_response = await fetch(url, {
+			method: 'POST',
+			headers: { 
+				'Authorization': 'Bearer ' + req_session.access_token,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify(trustedIssuerEntity)
+		});
+		if (post_response.status != 201) {
+			const errorBody = await post_response.text();
+			result.err = `Failed to register issuer: ${post_response.status} - ${errorBody}`;
+			info('Failed to register issuer: ${post_response.status} - ${errorBody}');
+			return result;
+		}
+		debug('Successfully registered issuer');
+		result.status = post_response.status;
+		return result;
+	} catch (e) {
+		result.err = e;
+		return result;
+    }
+}
+
 // PATCH change delivery attribute
 async function patch_delivery(id, attr, val, req_session) {
     let result = {
@@ -272,7 +316,7 @@ async function patch_delivery(id, attr, val, req_session) {
 				},
 			body: JSON.stringify(body)
 		});
-		if (patch_response.status != 204) {
+		if (patch_response.status != 20) {
 			const errorBody = await patch_response.text();
 			result.err = `Access denied when patching delivery order: ${errorBody}`;
 			debug('Received error when patching delivery order: %o', errorBody);
@@ -297,6 +341,27 @@ function render_error(res, user, error) {
     });
 }
 
+async function evaluate_selfdescription(req_session) {
+	info("Evaluate session")
+    if (req_session.access_token) {
+		info("The token " + req_session.access_token)
+		var decoded = jwt(req_session.access_token) 
+		if (decoded['verifiablePresentation']) {
+			info("VP")
+			// we have a gaia-x credential
+			for(const vp of decoded['verifiablePresentation']) {
+				info("Evaluate" + vp)
+				if (vp['credentialSubject']['type'] === "gx:LegalParticipant") {
+					return vp['credentialSubject']
+				}
+				info(JSON.stringify(vp['credentialSubject']))
+			}
+		}
+	}
+	info("No sd")
+    return null;
+}
+
 // Obtain email parameter from JWT access_token of user
 async function evaluate_user(req_session) {
 	info("Evaluate session")
@@ -304,14 +369,25 @@ async function evaluate_user(req_session) {
 		info("The token " + req_session.access_token)
 		var decoded = jwt(req_session.access_token)
 		if (decoded['email']) {
+			info("EMAIL")
 			// plain oidc
 			return decoded['email']
-		} else if (decoded['verifiableCredential']){
+		} else if (decoded['verifiableCredential']) {
+			info("VC")
 			// we have a vc
 			return decoded['verifiableCredential']['credentialSubject']['firstName'] + " "+ decoded['verifiableCredential']['credentialSubject']['familyName']
+		} else if (decoded['verifiablePresentation']) {
+			info("VP")
+			// we have a gaia-x credential
+			for(const vp of decoded['verifiablePresentation']) {
+				info("Evaluate" + vp)
+				if (vp['type'].includes("BatteryPassAuthCredential")) {
+					return vp['credentialSubject']['firstName'] + " "+ vp['credentialSubject']['familyName']
+				}
+			}
 		}
-
-	} 
+		info(JSON.stringify(decoded))
+	}
 	info("No token")
     return null;
 }
@@ -456,20 +532,72 @@ app.get('/logout', (req, res) => {
 app.get('/portal', async (req, res) => {
     info('GET /portal: Call to portal page');
     var user = await evaluate_user(req.session);
+	var sd = await evaluate_selfdescription(req.session);
     if (!user) {
 		info('User was not logged in');
 		render_error(res, null, 'Not logged in');
 		return;
     }
+	let trusted_issuers = []
+	if (sd) {
+		info("Got " + JSON.stringify(sd))
+		trusted_issuers_result = await get_entities("TrustedIssuer", req.session)
+		if (!trusted_issuers_result.err) {
+			for (ti in trusted_issuers_result.entities) {
+				trusted_issuers.push(ti.selfDescription.value)
+			}
+		}
+	}
     
     res.render('portal', {
 		title: config.title,
 		entity_id: '',
 		user: user,
+		sd: sd,
+		trusted_issuers: trusted_issuers,
 		get_label: config.getLabel,
 		input_label: config.inputLabel
     });
 });
+
+app.post('/sd', async(req, res) => {
+	info('Try to post self-description.')
+	// just for rendering
+    var user = await evaluate_user(req.session);
+	// the sd to be registerd
+	var sd = await evaluate_selfdescription(req.session)
+	if(!sd) {	
+		console.warn('Session does not conatin a self description.');
+		render_error(res, null, 'Not logged in');
+		return;
+    }
+
+	const result = await register_sd(sd, req.session)
+	if (result.err) {
+		res.render('portal', {
+			title: config.title,
+			entity_id: '',
+				user: user,
+				sd: sd,
+				registered: false,
+				error: result.err,
+				get_label: config.getLabel,
+				input_label: config.inputLabel
+		});
+		return
+	} else {
+		res.render('portal', {
+			title: config.title,
+			entity_id: '',
+				user: user,
+				sd: sd,
+				registered: true,
+				get_label: config.getLabel,
+				input_label: config.inputLabel
+		});
+		return
+	}
+})
 
 // POST /portal
 // View/change  delivery order
