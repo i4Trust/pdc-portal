@@ -347,14 +347,14 @@ async function evaluate_selfdescription(req_session) {
 		info("The token " + req_session.access_token)
 		var decoded = jwt(req_session.access_token) 
 		if (decoded['verifiablePresentation']) {
-			info("VP")
+			info("Evaluate vp " + JSON.stringify(decoded['verifiablePresentation']))
 			// we have a gaia-x credential
 			for(const vp of decoded['verifiablePresentation']) {
-				info("Evaluate" + vp)
+				info("Evaluate vc in vp " + JSON.stringify(vp))
 				if (vp['credentialSubject']['type'] === "gx:LegalParticipant") {
+					info("The subject " + JSON.stringify(vp['credentialSubject']))
 					return vp['credentialSubject']
 				}
-				info(JSON.stringify(vp['credentialSubject']))
 			}
 		}
 	}
@@ -381,7 +381,7 @@ async function evaluate_user(req_session) {
 			// we have a gaia-x credential
 			for(const vp of decoded['verifiablePresentation']) {
 				info("Evaluate" + vp)
-				if (vp['type'].includes("BatteryPassAuthCredential")) {
+				if (vp['credentialSubject']['firstName'] && vp['credentialSubject']['familyName']) {
 					return vp['credentialSubject']['firstName'] + " "+ vp['credentialSubject']['familyName']
 				}
 			}
@@ -543,8 +543,8 @@ app.get('/portal', async (req, res) => {
 		info("Got " + JSON.stringify(sd))
 		trusted_issuers_result = await get_entities("TrustedIssuer", req.session)
 		if (!trusted_issuers_result.err) {
-			for (ti in trusted_issuers_result.entities) {
-				trusted_issuers.push(ti.selfDescription.value)
+			for (let i = 0; i < trusted_issuers_result.entities.length; i++) {
+				trusted_issuers.push(trusted_issuers_result.entities[i].selfDescription.value)
 			}
 		}
 	}
@@ -554,7 +554,7 @@ app.get('/portal', async (req, res) => {
 		entity_id: '',
 		user: user,
 		sd: sd,
-		trusted_issuers: trusted_issuers,
+		trusted_participants: trusted_issuers,
 		get_label: config.getLabel,
 		input_label: config.inputLabel
     });
@@ -573,6 +573,17 @@ app.post('/sd', async(req, res) => {
     }
 
 	const result = await register_sd(sd, req.session)
+
+	let trusted_issuers = []
+
+	trusted_issuers_result = await get_entities("TrustedIssuer", req.session)
+	if (!trusted_issuers_result.err) {
+		for (let i = 0; i < trusted_issuers_result.entities.length; i++) {
+			trusted_issuers.push(trusted_issuers_result.entities[i].selfDescription.value)
+		}
+	}
+	
+    
 	if (result.err) {
 		res.render('portal', {
 			title: config.title,
@@ -581,6 +592,7 @@ app.post('/sd', async(req, res) => {
 				sd: sd,
 				registered: false,
 				error: result.err,
+				trusted_participants: trusted_issuers,
 				get_label: config.getLabel,
 				input_label: config.inputLabel
 		});
@@ -592,6 +604,7 @@ app.post('/sd', async(req, res) => {
 				user: user,
 				sd: sd,
 				registered: true,
+				trusted_participants: trusted_issuers,
 				get_label: config.getLabel,
 				input_label: config.inputLabel
 		});

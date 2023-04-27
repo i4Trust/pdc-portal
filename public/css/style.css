@@ -190,8 +190,16 @@ label {
 .card-wide.mdl-card {
   width: 512px;
   background-color: rgba(0, 0, 255, 0.02);
-  position: absolute;
-  left: 10%;
+}
+
+.card-table {
+  width: 100%;
+}
+.card-small.mdl-card {
+  width: fit-content;
+  min-height: 0;
+  height: fit-content;
+  background-color: rgba(0, 0, 255, 0.02);
 }
 
 .card-wide > .mdl-card__title {
@@ -205,3 +213,24 @@ label {
 .card-wide > .mdl-card__supporting-text {
   background-color: #000 10%;
 }
+
+.card-small > .mdl-card__title {
+  background-image: linear-gradient(rgba(0, 0, 255, 0.5), rgba(0, 0, 255, 0));
+  background-size: 512px, 30px;
+  background-repeat: no-repeat;
+  background-position: top right;
+  color: #000;
+  height: 30px;
+}
+.card-small > .mdl-card__supporting-text {
+  background-color: #000 10%;
+  width: 100%;
+}
+
+
+.block {
+  float: left;
+  padding: 0 10px;
+  width: 50%;
+}
+

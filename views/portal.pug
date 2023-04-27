@@ -37,67 +37,81 @@ block entities
             td #{i.type}
             td #{i.id}        
 block sd 
-  div.card-wide.mdl-card.mdl-shadow--2dp
-    div.mdl-card__title
-      h2.mdl-card__title-text
-        | #{sd.type}
-    div.mdl-card__supporting-text
-      div.mdl-list
-          div.mdl-list__item--three-line
-            span.mdl-list__item-primary-content
-              i.material-icons.mdl-list__item-icon badge
+  div.block
+    div.card-wide.mdl-card.mdl-shadow--2dp
+      div.mdl-card__title
+        h2.mdl-card__title-text
+          | #{sd.type}
+      div.mdl-card__supporting-text
+        div.mdl-list
+            div.mdl-list__item--two-line
+              span.mdl-list__item-primary-content
+                i.material-icons.mdl-list__item-icon badge
+                if sd["id"]
+                  span 
+                    h6 Id 
+                  span.mdl-list__item-text-body #{sd["id"]}   
+            div.mdl-list__item--two-line
+              span.mdl-list__item-primary-content
+                i.material-icons.mdl-list__item-icon badge
+                if sd["gx:legalName"]
+                  span 
+                    h6 Legal Name 
+                  span.mdl-list__item-text-body #{sd["gx:legalName"]}    
+            div.mdl-list__item--two-line
+              span.mdl-list__item-primary-content
+                i.material-icons.mdl-list__item-icon location_city
+                if sd["gx:headquarterAddress"]
+                  span
+                    h6 Headquarter Address 
+                  span.mdl-list__item-text-body #{JSON.stringify(sd["gx:headquarterAddress"])}    
+            div.mdl-list__item--two-line
+              span.mdl-list__item-primary-content
+                i.material-icons.mdl-list__item-icon location_city
+                if sd["gx:legalAddress"]
+                  span 
+                    h6 Legal Address 
+                  span.mdl-list__item-text-body #{JSON.stringify(sd["gx:legalAddress"])}
+            div.mdl-list__item--two-line
+              span.mdl-list__item-primary-content
+                i.material-icons.mdl-list__item-icon numbers
+                if sd["gx:legalRegistrationNumber"]
+                  span 
+                    h6 Registration Number 
+                  span.mdl-list__item-text-body #{JSON.stringify(sd["gx:legalRegistrationNumber"])}    
+            div.mdl-list__item--two-line
+              span.mdl-list__item-primary-content
+                i.material-icons.mdl-list__item-icon dataset
+                if sd["gx-terms-and-conditions:gaiaxTermsAndConditions"]
+                  span 
+                    h6 Terms and conditions 
+                  span.mdl-list__item-text-body #{sd["gx-terms-and-conditions:gaiaxTermsAndConditions"]}
+      div.mdl-card__actions.mdl-card--border    
+        if (error) 
+          button.mdl-button.mdl-js-button.mdl-button--fab.mdl-button--colored
+            i.material-icons warning
+          span #{error}
+        if (!registered && !error)
+          form(action='/sd', method='POST')
+            div.form-group
+              button.button-sd.mdl-button.mdl-js-button.mdl-button--fab.mdl-button--colored(type="submit")
+                i.material-icons add
+        if (registered)
+          button.button-sd.mdl-button.mdl-js-button.mdl-button--fab.mdl-button--colored
+            i.material-icons done
+  div.block
+    h4 Trusted Participants
+      each sd in trusted_participants 
+        div.card-small.mdl-card.mdl-shadow--2dp
+          div.mdl-card__title
+          div.mdl-card__supporting-text
+            table.card-table 
               if sd["id"]
-                span 
-                  h6 Id 
-                span.mdl-list__item-text-body #{sd["id"]}   
-          div.mdl-list__item--three-line
-            span.mdl-list__item-primary-content
-              i.material-icons.mdl-list__item-icon badge
-              if sd["gx:legalName"]
-                span 
-                  h6 Legal Name 
-                span.mdl-list__item-text-body #{sd["gx:legalName"]}    
-          div.mdl-list__item--three-line
-            span.mdl-list__item-primary-content
-              i.material-icons.mdl-list__item-icon location_city
-              if sd["gx:headquarterAddress"]
-                span
-                  h6 Headquarter Address 
-                span.mdl-list__item-text-body #{JSON.stringify(sd["gx:headquarterAddress"])}    
-          div.mdl-list__item--three-line
-            span.mdl-list__item-primary-content
-              i.material-icons.mdl-list__item-icon location_city
-              if sd["gx:legalAddress"]
-                span 
-                  h6 Legal Address 
-                span.mdl-list__item-text-body #{JSON.stringify(sd["gx:legalAddress"])}
-          div.mdl-list__item--three-line
-            span.mdl-list__item-primary-content
-              i.material-icons.mdl-list__item-icon numbers
-              if sd["gx:legalRegistrationNumber"]
-                span 
-                  h6 Registration Number 
-                span.mdl-list__item-text-body #{JSON.stringify(sd["gx:legalRegistrationNumber"])}    
-          div.mdl-list__item--three-line
-            span.mdl-list__item-primary-content
-              i.material-icons.mdl-list__item-icon dataset
-              if sd["gx-terms-and-conditions:gaiaxTermsAndConditions"]
-                span 
-                  h6 Terms and conditions 
-                span.mdl-list__item-text-body #{sd["gx-terms-and-conditions:gaiaxTermsAndConditions"]}
-    div.mdl-card__actions.mdl-card--border    
-      if (error) 
-        button.mdl-button.mdl-js-button.mdl-button--fab.mdl-button--colored
-          i.material-icons warning
-        span #{error}
-      if (!registered && !error)
-        form(action='/sd', method='POST')
-          div.form-group
-            button.button-sd.mdl-button.mdl-js-button.mdl-button--fab.mdl-button--colored(type="submit")
-              i.material-icons add
-      if (registered)
-        button.button-sd.mdl-button.mdl-js-button.mdl-button--fab.mdl-button--colored
-          i.material-icons done
+                  tr 
+                    td 
+                      i.material-icons.mdl-list__item-icon badge
+                    td Id 
+                    td #{sd["id"]}
 block delivery  
   div.content-delivery-row
     h2.delivery-id
