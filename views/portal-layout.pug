@@ -7,10 +7,13 @@ block topnav
 
 block content
   div.container
-    block search
-    if (entities)
+    if (!sd)
+      block search
+    if (entities && !sd)
       block entities
     if (entity)
       block entity
     if (delivery)
       block delivery
+    if (sd)
+      block sd
