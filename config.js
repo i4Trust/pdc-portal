@@ -99,7 +99,7 @@ if (user_cfg.idp) {
 
 // SIOP
 config.siop = {
-    clientId: 'some_id',
+    clientId: user_cfg.siop.client_id,
     enabled: false,
     verifier_uri: user_cfg.siop.verifier_uri,
     login_path: "/api/v1/loginQR",
