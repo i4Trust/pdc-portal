@@ -6,7 +6,8 @@ block content
       h2 Please authenticate using the QR in the popup.
   script. 
     function openWindow() {
-        return window.open('#{siop_login}?state=#{sessionId}&client_callback=#{siop_callback}', '_blank', 'popup,width=500,height=500');
+        return window.open('#{siop_login}?state=#{sessionId}&client_callback=#{siop_callback}' +
+            '&client_id=#{clientId}', '_blank', 'popup,width=500,height=500');
     }
     var thePopup = openWindow();
     const intervalID = setInterval(pollServer, 1000, 'nonce');

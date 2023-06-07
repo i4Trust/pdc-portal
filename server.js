@@ -472,6 +472,7 @@ app.get('/loginSiop', async (req, res) => {
 		title: config.title,
 		qr: "src",
 		sessionId: req.sessionID,
+		clientId: config.siop.clientId,
 		siop_login: config.siop.verifier_uri + config.siop.login_path,
 		siop_callback: encodeURIComponent(config.url + "/auth_callback")
 	});
