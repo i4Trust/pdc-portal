@@ -316,7 +316,7 @@ async function patch_delivery(id, attr, val, req_session) {
 				},
 			body: JSON.stringify(body)
 		});
-		if (patch_response.status != 20) {
+		if (patch_response.status != 204) {
 			const errorBody = await patch_response.text();
 			result.err = `Access denied when patching delivery order: ${errorBody}`;
 			debug('Received error when patching delivery order: %o', errorBody);
