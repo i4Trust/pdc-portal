@@ -104,18 +104,23 @@ config.siop = {
     verifier_uri: user_cfg.siop.verifier_uri,
     login_path: "/api/v1/loginQR",
     token_path: "/token",
+    jwtOnlyEnabled: false
 }
 
 if (user_cfg.siop && user_cfg.siop.enabled) {
-    config.siop.enabled = true
+    config.siop.enabled = true;
 }
 
 if (user_cfg.siop && user_cfg.siop.login_path) {
-    config.siop.login_path = user_cfg.siop.login_path
+    config.siop.login_path = user_cfg.siop.login_path;
 }
 
 if (user_cfg.siop && user_cfg.siop.token_path) {
-    config.siop.token_path = user_cfg.siop.token_path
+    config.siop.token_path = user_cfg.siop.token_path;
+}
+
+if (user_cfg.siop && user_cfg.siop.jwtOnlyEnabled) {
+    config.siop.jwtOnlyEnabled = true;
 }
 
 // Debug output of config

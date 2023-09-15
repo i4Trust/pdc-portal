@@ -34,9 +34,16 @@ block content
                 alert("Failed to finish login")
                 return
             }
-            console.log("Forward to the portal.")
-            location = "/portal"
-            return
+            showJwtOnly='#{jwtOnly}';
+            if (showJwtOnly=="true") {
+                console.log("Forward to show JWT access token only.")
+                location = "/jwt"
+                return
+            } else {
+                console.log("Forward to the portal.")
+                location = "/portal"
+                return
+            }
         } catch (error) {
             return
         }
