@@ -48,6 +48,8 @@ siop:
   did: "did:key:z6Mkk5iPrXg35fC4aq4yp3QadqVGKFhQL2b76fy6QKmSXJNT"
   # Type of credential that the Verifier will accept
   scope: "dsba.credentials.presentation.PacketDeliveryService"
+  # Show separate Login button which shows the JWT access token only after login
+  jwtOnlyEnabled: false
 
 # IDP configuration for login
 idp:

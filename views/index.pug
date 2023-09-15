@@ -8,6 +8,10 @@ block content
         tr
           td
             a.button(href=`/loginSiop`) Login with VC
+      if siopJwtOnly
+        tr
+          td
+            a.button(href=`/loginSiop?jwtOnly=true`) Login with VC (display JWT access token only)
       each i in idps
         tr
           td
