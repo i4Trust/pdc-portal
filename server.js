@@ -443,7 +443,8 @@ app.get('/', (req, res) => {
     res.render('index', {
 		title: config.title,
 		idps: config.idp,
-		siop: config.siop.enabled
+    	        siop: config.siop.enabled,
+	        siopJwtOnly: config.siop.jwtOnlyEnabled
     });
 });
 
@@ -467,6 +468,11 @@ app.get('/login', async (req, res) => {
 
 // Perform login via VC SIOP flow
 app.get('/loginSiop', async (req, res) => {
+
+        var showJwtOnly = false;
+        if (req.query.jwtOnly && req.query.jwtOnly == "true") {
+	    showJwtOnly = true;
+	}
 	
 	res.render("siop",  {
 		title: config.title,
@@ -474,7 +480,8 @@ app.get('/loginSiop', async (req, res) => {
 		sessionId: req.sessionID,
 		clientId: config.siop.clientId,
 		siop_login: config.siop.verifier_uri + config.siop.login_path,
-		siop_callback: encodeURIComponent(config.url + "/auth_callback")
+	        siop_callback: encodeURIComponent(config.url + "/auth_callback"),
+	        jwtOnly: showJwtOnly
 	});
 	  
 });
@@ -559,6 +566,27 @@ app.get('/portal', async (req, res) => {
 		get_label: config.getLabel,
 		input_label: config.inputLabel
     });
+});
+
+// GET /jwt
+// Display the JWT access token
+app.get('/jwt', async (req, res) => {
+    info('GET /jwt: Call to page displaying current JWT access token');
+    var user = await evaluate_user(req.session);
+    if (!user) {
+	info('User was not logged in');
+	render_error(res, null, 'Not logged in');
+	return;
+    }
+    
+    const access_token = req.session.access_token;
+
+    res.render('jwt', {
+	title: config.title,
+	user: user,
+	access_token: access_token
+    });
+    
 });
 
 app.post('/sd', async(req, res) => {
